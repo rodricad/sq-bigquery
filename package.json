@@ -21,8 +21,10 @@
   "dependencies": {
     "@google-cloud/bigquery": "^4.3.0",
     "bluebird": "^3.7.1",
-    "sq-toolkit": "https://github.com/rodricad/sq-toolkit.git",
+    "fs-extra": "^8.1.0",
     "lodash": "^4.17.15",
+    "sq-logger": "git+https://github.com/rodricad/sq-logger.git",
+    "sq-toolkit": "https://github.com/rodricad/sq-toolkit.git",
     "uuid": "^3.3.3"
   }
 }
