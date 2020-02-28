@@ -77,7 +77,7 @@ class BigQueryJob {
     getQuerySQL() {
         const debugStr = this.getQuerySQLDebug();
         const params = this.getQueryParams();
-        return debugStr + this.sqlTemplate(params || {});
+        return (debugStr ? (debugStr.trim() + '\n') : '') + this.sqlTemplate(params || {});
     }
 
     /**

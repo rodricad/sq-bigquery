@@ -39,6 +39,10 @@ class BigQueryHelper {
         return _instance;
     }
 
+    static clearInstance() {
+        _instance = null;
+    }
+
     /**
      * @param {Object}  opts
      * @param {String}  opts.projectId
