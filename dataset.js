@@ -18,7 +18,7 @@ class BigQueryDataset {
      * @param {Boolean=}         opts.bufferEnabled
      * @param {Number=}          opts.bufferMaxItems
      * @param {Number=}          opts.bufferMaxTime
-     * @param {Boolean=}          opts.bufferItemPromises
+     * @param {Boolean=}         opts.bufferItemPromises
      */
     constructor(dataset, opts) {
         this.name           = dataset.id;

@@ -5,7 +5,7 @@ let uuid = require('uuid');
 let Exception = require('sq-toolkit/exception');
 let BufferQueue = require('sq-toolkit/buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
-let Promise = require('bluebird');
+let Promise = require('bluebird'); // TODO remove and replace with sq-toolkit promise map util
 let BigQueryError = require('./error');
 
 const BigQueryTableConst = require('./lib/constants/table');
