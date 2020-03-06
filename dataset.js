@@ -18,6 +18,7 @@ class BigQueryDataset {
      * @param {Boolean=}         opts.bufferEnabled
      * @param {Number=}          opts.bufferMaxItems
      * @param {Number=}          opts.bufferMaxTime
+     * @param {Boolean=}          opts.bufferItemPromises
      */
     constructor(dataset, opts) {
         this.name           = dataset.id;
@@ -27,9 +28,10 @@ class BigQueryDataset {
         this.loggerStart    = _.get(opts, 'loggerStart', null);
         this.loggerEach     = _.get(opts, 'loggerEach', null);
 
-        this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
-        this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
-        this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
+        this.bufferEnabled      = _.get(opts, 'bufferEnabled', false);
+        this.bufferMaxItems     = _.get(opts, 'bufferMaxItems', null);
+        this.bufferMaxTime      = _.get(opts, 'bufferMaxTime', null);
+        this.bufferItemPromises = _.get(opts, 'bufferItemPromises', null);
     }
 
     /**
@@ -55,7 +57,8 @@ class BigQueryDataset {
 
             bufferEnabled: this.bufferEnabled,
             bufferMaxItems: this.bufferMaxItems,
-            bufferMaxTime: this.bufferMaxTime
+            bufferMaxTime: this.bufferMaxTime,
+            bufferItemPromises: this.bufferItemPromises
         };
 
         return _.defaults({}, opts, datasetOpts);

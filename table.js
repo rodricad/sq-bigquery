@@ -5,7 +5,7 @@ let uuid = require('uuid');
 let Exception = require('sq-toolkit/exception');
 let BufferQueue = require('sq-toolkit/buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
-
+let Promise = require('bluebird');
 let BigQueryError = require('./error');
 
 const BigQueryTableConst = require('./lib/constants/table');
@@ -21,6 +21,7 @@ class BigQueryTable {
      * @param {Boolean=}       opts.bufferEnabled
      * @param {Number=}        opts.bufferMaxItems
      * @param {Number=}        opts.bufferMaxTime
+     * @param {Boolean=}       opts.bufferItemPromises
      */
     constructor(table, opts) {
         this.name           = table.id;
@@ -30,9 +31,10 @@ class BigQueryTable {
         this.loggerStart    = _.get(opts, 'loggerStart', null);
         this.loggerEach     = _.get(opts, 'loggerEach', null);
 
-        this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
-        this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
-        this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
+        this.bufferEnabled      = _.get(opts, 'bufferEnabled', false);
+        this.bufferMaxItems     = _.get(opts, 'bufferMaxItems', null);
+        this.bufferMaxTime      = _.get(opts, 'bufferMaxTime', null);
+        this.bufferItemPromises = _.get(opts, 'bufferItemPromises', false);
 
         this.bufferQueue = null;
         this._init();
@@ -56,7 +58,7 @@ class BigQueryTable {
 
             maxItems: this.bufferMaxItems,
             maxTime: this.bufferMaxTime,
-            itemPromises: false
+            itemPromises: this.bufferItemPromises
         };
 
         this.bufferQueue = new BufferQueue(opts);
@@ -70,6 +72,13 @@ class BigQueryTable {
     }
 
     /**
+     * @return {Boolean}
+     */
+    isBufferItemPromisesEnabled() {
+        return this.bufferItemPromises === true;
+    }
+
+    /**
      * @param {Object|Object[]} rows
      * @return {Promise|null}
      */
@@ -79,6 +88,11 @@ class BigQueryTable {
         }
 
         if (Array.isArray(rows) === true) {
+            if(this.isBufferItemPromisesEnabled() === true) {
+                return Promise.map(rows, row => { // TODO: Create promise map util on sq-toolkit and replace bluebird
+                    return this.bufferQueue.add(row);
+                });
+            }
             return this.bufferQueue.addMany(rows);
         }
 

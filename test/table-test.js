@@ -181,12 +181,55 @@ describe('BigQueryTable Test', function () {
                 bigQueryUtil.restoreInsertId();
             });
         });
+
+        it('4. Insert objects with buffer enabled and buffer item promises enabled. maxItems = 2. Expect promises returned', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+
+            let item1 = { value: 1 };
+            let item2 = { value: 'string' };
+
+            bigQueryUtil.patchInsertId();
+
+            let scope = bigQueryUtil.nockInsert(table.name, [item1, item2]);
+
+            let promise1 = table.insert(item1);
+            let promise2 = table.insert(item2);
+
+            return Promise.all([promise1, promise2])
+            .then(() => {
+                scope.done();
+            })
+            .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
+
+        it('5. Insert multiple objects at once with buffer enabled and buffer item promises enabled. maxItems = 2. Expect promises returned', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+
+            let items = [{ value: 1 }, { value: 'string' }];
+
+            bigQueryUtil.patchInsertId();
+
+            let scope = bigQueryUtil.nockInsert(table.name, items);
+
+            return table.insert(items)
+            .then(() => {
+                scope.done();
+            })
+            .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
     });
 
     /**
      * @param {Object=}  opts
      * @param {Boolean=} opts.bufferEnabled
-     * @param {Boolean=} opts.bufferMaxItems
+     * @param {Number=} opts.bufferMaxItems
+     * @param {Boolean=} opts.bufferItemPromises
      * @return {BigQueryTable}
      * @private
      */
@@ -209,7 +252,8 @@ describe('BigQueryTable Test', function () {
             logger: new DummyLogger(),
             bufferEnabled: false,
             bufferMaxItems: null,
-            bufferMaxTime: null
+            bufferMaxTime: null,
+            bufferItemPromises: false
         };
         if (opts != null) {
             _.assignIn(options, opts);
