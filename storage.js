@@ -3,7 +3,8 @@
 let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
 
-let BigQueryDataset = require('./dataset');
+const BigQueryTable = require('./table');
+const BigQueryDataset = require('./dataset');
 
 const BigQueryTableConst = require('./lib/constants/table');
 
@@ -99,8 +100,15 @@ class BigQueryStorage {
      * @return {Promise|null}
      */
     insert(rows) {
-        let data = Array.isArray(rows) === true ? rows.map(this.getInsertData) : this.getInsertData(rows);
+        let data = Array.isArray(rows) === true ? rows.map(this.mapRow) : this.mapRow(rows);
         return this.table.insert(data);
+    }
+
+    mapRow(row) {
+        let insertData = this.getInsertData(row);
+        row._insertId = row._insertId || BigQueryTable.getInsertId(); // uuid
+        insertData.insertId = row._insertId;
+        return insertData;
     }
 }
 
