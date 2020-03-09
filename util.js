@@ -376,6 +376,11 @@ class BigQueryUtil {
         let items = Array.isArray(rows) === true ? rows : [rows];
 
         return items.map(item => {
+            if(item._insertId != null) {
+                let itemCopy = Object.assign({}, item);
+                delete itemCopy._insertId;
+                return { insertId: item._insertId, json: itemCopy };
+            }
             return { insertId: BigQueryUtil.getDummyInsertId(), json: item };
         });
     }

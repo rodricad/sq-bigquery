@@ -3,7 +3,7 @@
 let _ = require('lodash');
 let uuid = require('uuid');
 let Exception = require('sq-toolkit/exception');
-let BufferQueue = require('sq-toolkit/buffer-queue');
+let BufferQueue = require('./lib/buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
 let Promise = require('bluebird'); // TODO remove and replace with sq-toolkit promise map util
 let BigQueryError = require('./error');
@@ -79,33 +79,30 @@ class BigQueryTable {
     }
 
     /**
-     * @param {Object|Object[]} rows
+     * @param {Object|Object[]} data
      * @return {Promise|null}
      */
-    insert(rows) {
+    insert(data) {
         if (this.isBufferEnabled() === false) {
-            return this._insert(rows);
+            let items = BigQueryTable.getRawRows(data);
+            return this._insert(items);
         }
-
-        if (Array.isArray(rows) === true) {
+        if (Array.isArray(data) === true) {
             if(this.isBufferItemPromisesEnabled() === true) {
-                return Promise.map(rows, row => { // TODO: Create promise map util on sq-toolkit and replace bluebird
-                    return this.bufferQueue.add(row);
-                });
+                throw new Exception(BigQueryTableConst.ErrorCode.ERROR_ADD_MANY_NOT_SUPPORTED, 'Can\'t insert multiple rows at once when bufferItemPromises is enabled.')
             }
-            return this.bufferQueue.addMany(rows);
+            let items = BigQueryTable.getRawRows(data);
+            return this.bufferQueue.addMany(items);
         }
-
-        return this.bufferQueue.add(rows);
+        return this.bufferQueue.add(BigQueryTable.getRawRow(data));
     }
 
     /**
-     * @param {Object|Object[]} rows
+     * @param {Object|Object[]} items
      * @return {Promise.<Object>}
      * @private
      */
-    _insert(rows) {
-        let items   = BigQueryTable.getRawRows(rows);
+    _insert(items) {
         let options = {
             raw: true
         };
@@ -125,8 +122,18 @@ class BigQueryTable {
         let items = Array.isArray(rows) === false ? [rows] : rows;
 
         return items.map(item => {
-            return { insertId: BigQueryTable.getInsertId(), json: item };
+            return this.getRawRow(item);
         });
+    }
+
+    static getRawRow(row) {
+        let item = Object.assign({}, row);
+        if(item._insertId != null) {
+            let insertId = item._insertId;
+            delete item._insertId;
+            return { insertId: insertId, json: item };
+        }
+        return { insertId: BigQueryTable.getInsertId(), json: item };
     }
 
     /**

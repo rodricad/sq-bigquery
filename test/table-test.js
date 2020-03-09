@@ -7,6 +7,7 @@ describe('BigQueryTable Test', function () {
     let _       = require('lodash');
     let chai    = require('chai');
     let expect  = chai.expect;
+    const BigTableConst = require('../lib/constants/table');
 
     let PROJECT_ID   = 'test-project';
     let DATASET_NAME = 'DatasetNew';
@@ -205,24 +206,36 @@ describe('BigQueryTable Test', function () {
             });
         });
 
-        it('5. Insert multiple objects at once with buffer enabled and buffer item promises enabled. maxItems = 2. Expect promises returned', function () {
+        it('5. Try to insert multiple objects at once with buffer enabled and buffer item promises enabled. Expect error thrown', async () => {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
 
             let items = [{ value: 1 }, { value: 'string' }];
 
-            bigQueryUtil.patchInsertId();
+            try {
+                await table.insert(items);
+            } catch (err) {
+                expect(err.code).to.eql(BigTableConst.ErrorCode.ERROR_ADD_MANY_NOT_SUPPORTED);
+            }
+        });
 
-            let scope = bigQueryUtil.nockInsert(table.name, items);
+        it('6. Test inserting passing insertId. Expect promises returned', async () => {
 
-            return table.insert(items)
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+
+            let item1 = { value: 1, _insertId: '123456789' };
+            let item2 = { value: 'string', _insertId: '987654321' };
+
+            let scope = bigQueryUtil.nockInsert(table.name, [item1, item2]);
+
+            let promise1 = table.insert(item1);
+            let promise2 = table.insert(item2);
+
+            return Promise.all([promise1, promise2])
             .then(() => {
                 scope.done();
-            })
-            .finally(() => {
-                bigQueryUtil.restoreInsertId();
             });
-        });
+        })
     });
 
     /**
