@@ -7,7 +7,7 @@ describe('BigQueryTable Test', function () {
     let _       = require('lodash');
     let chai    = require('chai');
     let expect  = chai.expect;
-    const BigTableConst = require('../lib/constants/table');
+    const Error = require('../lib/constants/error');
 
     let PROJECT_ID   = 'test-project';
     let DATASET_NAME = 'DatasetNew';
@@ -215,7 +215,7 @@ describe('BigQueryTable Test', function () {
             try {
                 await table.insert(items);
             } catch (err) {
-                expect(err.code).to.eql(BigTableConst.ErrorCode.ERROR_ADD_MANY_NOT_SUPPORTED);
+                expect(err.code).to.eql(Error.ERROR_ADD_MANY_NOT_SUPPORTED);
             }
         });
 

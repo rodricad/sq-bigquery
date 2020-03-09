@@ -1,13 +1,14 @@
 'use strict';
 
-let _ = require('lodash');
-let uuid = require('uuid');
-let Exception = require('sq-toolkit/exception');
-let BufferQueue = require('./lib/buffer-queue');
-let BigQuery = require('@google-cloud/bigquery').BigQuery;
-let BigQueryError = require('./error');
+const _ = require('lodash');
+const Exception = require('sq-toolkit/exception');
+const BufferQueue = require('./lib/buffer-queue');
+const BigQuery = require('@google-cloud/bigquery').BigQuery;
+const BigQueryError = require('./error');
+const IdGenerator = require('./lib/id-generator');
 
 const BigQueryTableConst = require('./lib/constants/table');
+const Error = require('./lib/constants/error');
 
 class BigQueryTable {
 
@@ -88,7 +89,7 @@ class BigQueryTable {
         }
         if (Array.isArray(data) === true) {
             if(this.isBufferItemPromisesEnabled() === true) {
-                throw new Exception(BigQueryTableConst.ErrorCode.ERROR_ADD_MANY_NOT_SUPPORTED, 'Can\'t insert multiple rows at once when bufferItemPromises is enabled.')
+                throw new Exception(Error.ERROR_ADD_MANY_NOT_SUPPORTED, 'Can\'t insert multiple rows at once when bufferItemPromises is enabled.')
             }
             let items = BigQueryTable.getRawRows(data);
             return this.bufferQueue.addMany(items);
@@ -132,15 +133,7 @@ class BigQueryTable {
             delete item._insertId;
             return { insertId: insertId, json: item };
         }
-        return { insertId: BigQueryTable.getInsertId(), json: item };
-    }
-
-    /**
-     * @return {String}
-     */
-    /* istanbul ignore next */
-    static getInsertId() {
-        return uuid.v4();
+        return { insertId: IdGenerator.generateInsertId(), json: item };
     }
 
     /**
@@ -157,7 +150,7 @@ class BigQueryTable {
             let type = pair[1];
 
             if (BigQueryTableConst.Schema.Type[type] == null) {
-                throw new Exception(BigQueryTableConst.ErrorCode.INVALID_SCHEMA_TYPE);
+                throw new Exception(Error.INVALID_SCHEMA_TYPE);
             }
 
             fields.push({ name: key, type: type, mode: BigQueryTableConst.Schema.Mode.NULLABLE });
@@ -167,7 +160,7 @@ class BigQueryTable {
     }
 }
 
-BigQueryTable.ErrorCode = BigQueryTableConst.ErrorCode;
+BigQueryTable.ErrorCode = Error;
 BigQueryTable.Schema    = BigQueryTableConst.Schema;
 
 module.exports = BigQueryTable;

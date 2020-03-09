@@ -1,10 +1,9 @@
 'use strict';
 
-let uuid = require('uuid');
 let nock = require('nock');
 let sinon = require('sinon');
 
-let BigQueryTable = require('./table');
+let IdGenerator = require('./lib/id-generator');
 
 class BigQueryUtil {
 
@@ -356,7 +355,7 @@ class BigQueryUtil {
         if (this.stubInsertId != null) {
             return;
         }
-        this.stubInsertId = sinon.stub(BigQueryTable, 'getInsertId').callsFake(function () {
+        this.stubInsertId = sinon.stub(IdGenerator, 'generateInsertId').callsFake(function () {
             return BigQueryUtil.getDummyInsertId();
         });
     }

@@ -3,10 +3,11 @@
 let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
 
-const BigQueryTable = require('./table');
+const IdGenerator = require('./lib/id-generator');
 const BigQueryDataset = require('./dataset');
 
 const BigQueryTableConst = require('./lib/constants/table');
+const Error = require('./lib/constants/error');
 
 class BigQueryStorage {
 
@@ -106,13 +107,13 @@ class BigQueryStorage {
 
     mapRow(row) {
         let insertData = this.getInsertData(row);
-        row._insertId = row._insertId || BigQueryTable.getInsertId(); // uuid
+        row._insertId = row._insertId || IdGenerator.generateInsertId(); // uuid
         insertData.insertId = row._insertId;
         return insertData;
     }
 }
 
 BigQueryStorage.Schema    = BigQueryTableConst.Schema;
-BigQueryStorage.ErrorCode = BigQueryTableConst.ErrorCode;
+BigQueryStorage.ErrorCode = Error;
 
 module.exports = BigQueryStorage;
