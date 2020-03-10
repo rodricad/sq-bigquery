@@ -4,8 +4,10 @@ let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
 
 let BigQueryDataset = require('./dataset');
+let BigQueryTable = require('./table');
 
 const BigQueryTableConst = require('./lib/constants/table');
+const Error = require('./lib/constants/error');
 
 class BigQueryStorage {
 
@@ -99,12 +101,18 @@ class BigQueryStorage {
      * @return {Promise|null}
      */
     insert(rows) {
-        let data = Array.isArray(rows) === true ? rows.map(this.getInsertData) : this.getInsertData(rows);
+        let data = Array.isArray(rows) === true ? rows.map(this.mapRow) : this.mapRow(rows);
         return this.table.insert(data);
+    }
+
+    mapRow(row) {
+        let insertData = this.getInsertData(row);
+        let insertId = row._insertId;
+        return BigQueryTable.getRawRow(insertData, insertId);
     }
 }
 
 BigQueryStorage.Schema    = BigQueryTableConst.Schema;
-BigQueryStorage.ErrorCode = BigQueryTableConst.ErrorCode;
+BigQueryStorage.ErrorCode = Error;
 
 module.exports = BigQueryStorage;
