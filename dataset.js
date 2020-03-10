@@ -28,9 +28,9 @@ class BigQueryDataset {
         this.loggerStart    = _.get(opts, 'loggerStart', null);
         this.loggerEach     = _.get(opts, 'loggerEach', null);
 
-        this.bufferEnabled      = _.get(opts, 'bufferEnabled', false);
-        this.bufferMaxItems     = _.get(opts, 'bufferMaxItems', null);
-        this.bufferMaxTime      = _.get(opts, 'bufferMaxTime', null);
+        this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
+        this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
+        this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
         this.bufferItemPromises = _.get(opts, 'bufferItemPromises', null);
     }
 

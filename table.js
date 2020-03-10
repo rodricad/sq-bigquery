@@ -1,11 +1,11 @@
 'use strict';
 
-const _ = require('lodash');
-const Exception = require('sq-toolkit/exception');
-const BufferQueue = require('./lib/buffer-queue');
-const BigQuery = require('@google-cloud/bigquery').BigQuery;
-const BigQueryError = require('./error');
-const IdGenerator = require('./lib/id-generator');
+let _ = require('lodash');
+let Exception = require('sq-toolkit/exception');
+let BufferQueue = require('./lib/buffer-queue');
+let BigQuery = require('@google-cloud/bigquery').BigQuery;
+let BigQueryError = require('./error');
+let IdGenerator = require('./lib/id-generator');
 
 const BigQueryTableConst = require('./lib/constants/table');
 const Error = require('./lib/constants/error');
@@ -31,9 +31,9 @@ class BigQueryTable {
         this.loggerStart    = _.get(opts, 'loggerStart', null);
         this.loggerEach     = _.get(opts, 'loggerEach', null);
 
-        this.bufferEnabled      = _.get(opts, 'bufferEnabled', false);
-        this.bufferMaxItems     = _.get(opts, 'bufferMaxItems', null);
-        this.bufferMaxTime      = _.get(opts, 'bufferMaxTime', null);
+        this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
+        this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
+        this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
         this.bufferItemPromises = _.get(opts, 'bufferItemPromises', false);
 
         this.bufferQueue = null;
@@ -122,7 +122,7 @@ class BigQueryTable {
         let items = Array.isArray(rows) === false ? [rows] : rows;
 
         return items.map(item => {
-            return this.getRawRow(item);
+            return BigQueryTable.getRawRow(item);
         });
     }
 
