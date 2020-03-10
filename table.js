@@ -84,6 +84,7 @@ class BigQueryTable {
      */
     insert(data) {
         if (this.isBufferEnabled() === false) {
+            data = Array.isArray(data) === false ? [data] : data;
             return this._insert(data);
         }
         if (Array.isArray(data) === true) {
