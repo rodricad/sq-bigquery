@@ -3,8 +3,8 @@
 let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
 
+let BigQueryDataset = require('./dataset');
 const IdGenerator = require('./lib/id-generator');
-const BigQueryDataset = require('./dataset');
 
 const BigQueryTableConst = require('./lib/constants/table');
 const Error = require('./lib/constants/error');
