@@ -2,7 +2,7 @@
 
 let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
-let BufferQueue = require('./lib/buffer-queue');
+let BufferQueue = require('./lib/bq-buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
 let BigQueryError = require('./error');
 let IdGenerator = require('./lib/id-generator');

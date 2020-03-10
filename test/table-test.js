@@ -172,10 +172,10 @@ describe('BigQueryTable Test', function () {
 
                 let logger = table.logger;
 
-                expect(logger.notifier.values.key).to.equals('TableExists | BufferQueue Error');
+                expect(logger.notifier.values.key).to.equals('TableExists | BqBufferQueue Error');
                 expect(logger.notifier.values.start).to.equals(10);
                 expect(logger.notifier.values.each).to.equals(100);
-                expect(logger.notifier.values.msg).to.equals('buffer-queue.js:: Error at %s Buffer. Error: ');
+                expect(logger.notifier.values.msg).to.equals('bq-buffer-queue.js:: Error at %s Buffer. Error: ');
             })
             .finally(() => {
                 NotifyUtil.restore(notify);
