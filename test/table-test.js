@@ -7,6 +7,7 @@ describe('BigQueryTable Test', function () {
     let _       = require('lodash');
     let chai    = require('chai');
     let expect  = chai.expect;
+    let sinon   = require('sinon');
     const Error = require('../lib/constants/error');
 
     let PROJECT_ID   = 'test-project';
@@ -108,13 +109,27 @@ describe('BigQueryTable Test', function () {
             });
 
             let scope = bigQueryUtil.nockInsert(table.name, item);
+            let insertSpy = sinon.spy(table.table, 'insert');
 
             return table.insert(item)
             .then(response => {
                 scope.done();
+                expect(insertSpy.calledOnce).to.eql(true);
+                expect(insertSpy.firstCall.args).to.eql([
+                    [{
+                        "insertId": "00000000-0000-0000-0000-000000000000",
+                        "json": {
+                            "title": "value"
+                        }
+                    }],
+                    {
+                        "raw": true
+                    }
+                ]);
                 expect(response.kind).to.equals('bigquery#tableDataInsertAllResponse');
             })
             .finally(() => {
+                insertSpy.restore();
                 bigQueryUtil.restoreInsertId();
             });
         });
