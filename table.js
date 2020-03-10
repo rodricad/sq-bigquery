@@ -5,7 +5,7 @@ let Exception = require('sq-toolkit/exception');
 let BufferQueue = require('./lib/bq-buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
 let BigQueryError = require('./error');
-let IdGenerator = require('./lib/id-generator');
+let uuid = require('uuid');
 
 const BigQueryTableConst = require('./lib/constants/table');
 const Error = require('./lib/constants/error');
@@ -84,17 +84,15 @@ class BigQueryTable {
      */
     insert(data) {
         if (this.isBufferEnabled() === false) {
-            let items = BigQueryTable.getRawRows(data);
-            return this._insert(items);
+            return this._insert(data);
         }
         if (Array.isArray(data) === true) {
             if(this.isBufferItemPromisesEnabled() === true) {
                 throw new Exception(Error.ERROR_ADD_MANY_NOT_SUPPORTED, 'Can\'t insert multiple rows at once when bufferItemPromises is enabled.')
             }
-            let items = BigQueryTable.getRawRows(data);
-            return this.bufferQueue.addMany(items);
+            return this.bufferQueue.addMany(data);
         }
-        return this.bufferQueue.add(BigQueryTable.getRawRow(data));
+        return this.bufferQueue.add(data);
     }
 
     /**
@@ -114,6 +112,10 @@ class BigQueryTable {
         });
     }
 
+    static getInsertId() {
+        return uuid.v4();
+    }
+
     /**
      * @param {Object|Object[]} rows
      * @return {Object|Object[]}
@@ -126,14 +128,11 @@ class BigQueryTable {
         });
     }
 
-    static getRawRow(row) {
-        let item = Object.assign({}, row);
-        if(item._insertId != null) {
-            let insertId = item._insertId;
-            delete item._insertId;
-            return { insertId: insertId, json: item };
+    static getRawRow(row, insertId) {
+        if(insertId == null) {
+            insertId = BigQueryTable.getInsertId();
         }
-        return { insertId: IdGenerator.generateInsertId(), json: item };
+        return { insertId: insertId, json: row };
     }
 
     /**

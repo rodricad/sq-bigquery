@@ -97,15 +97,15 @@ describe('BigQueryTable Test', function () {
 
     describe('2. insert()', function () {
 
-        it('1. Inert a single object with buffer disabled. Expect to be inserted immediately', function () {
+        it('1. Insert a single object with buffer disabled. Expect to be inserted immediately', function () {
 
             let table = _getTable({ bufferEnabled: false });
 
-            let item = {
-                title: 'value'
-            };
-
             bigQueryUtil.patchInsertId();
+
+            let item = BigQueryTable.getRawRow({
+                title: 'value'
+            });
 
             let scope = bigQueryUtil.nockInsert(table.name, item);
 
@@ -127,7 +127,7 @@ describe('BigQueryTable Test', function () {
             let items = [];
 
             for (let i = 0; i < 5; i++) {
-                let item = { title: 'value ' + i };
+                let item = BigQueryTable.getRawRow({ title: 'value ' + i });
                 items.push(item);
             }
 
@@ -153,8 +153,8 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2});
 
-            let item1 = { value: 1 };
-            let item2 = { value: 'string' };
+            let item1 = BigQueryTable.getRawRow({ value: 1 });
+            let item2 = BigQueryTable.getRawRow({ value: 'string' });
 
             bigQueryUtil.patchInsertId();
 
@@ -187,8 +187,8 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
 
-            let item1 = { value: 1 };
-            let item2 = { value: 'string' };
+            let item1 = BigQueryTable.getRawRow({ value: 1 });
+            let item2 = BigQueryTable.getRawRow({ value: 'string' });
 
             bigQueryUtil.patchInsertId();
 
@@ -210,7 +210,7 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
 
-            let items = [{ value: 1 }, { value: 'string' }];
+            let items = _.map([{ value: 1 }, { value: 'string' }], BigQueryTable.getRawRow);
 
             try {
                 await table.insert(items);
@@ -223,8 +223,8 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
 
-            let item1 = { value: 1, _insertId: '123456789' };
-            let item2 = { value: 'string', _insertId: '987654321' };
+            let item1 = BigQueryTable.getRawRow({ value: 1, _insertId: '123456789' });
+            let item2 = BigQueryTable.getRawRow({ value: 'string', _insertId: '987654321' });
 
             let scope = bigQueryUtil.nockInsert(table.name, [item1, item2]);
 

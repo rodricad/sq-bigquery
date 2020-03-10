@@ -3,7 +3,7 @@
 let nock = require('nock');
 let sinon = require('sinon');
 
-let IdGenerator = require('./lib/id-generator');
+let BigQueryTable = require('./table');
 
 class BigQueryUtil {
 
@@ -355,7 +355,7 @@ class BigQueryUtil {
         if (this.stubInsertId != null) {
             return;
         }
-        this.stubInsertId = sinon.stub(IdGenerator, 'generateInsertId').callsFake(function () {
+        this.stubInsertId = sinon.stub(BigQueryTable, 'getInsertId').callsFake(function () {
             return BigQueryUtil.getDummyInsertId();
         });
     }
@@ -372,16 +372,7 @@ class BigQueryUtil {
      * @return {Object[]}
      */
     static parseInsertRows(rows) {
-        let items = Array.isArray(rows) === true ? rows : [rows];
-
-        return items.map(item => {
-            if(item._insertId != null) {
-                let itemCopy = Object.assign({}, item);
-                delete itemCopy._insertId;
-                return { insertId: item._insertId, json: itemCopy };
-            }
-            return { insertId: BigQueryUtil.getDummyInsertId(), json: item };
-        });
+        return Array.isArray(rows) === true ? rows : [rows];
     }
 
     /**
