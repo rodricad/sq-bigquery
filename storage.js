@@ -28,6 +28,7 @@ class BigQueryStorage {
      * @property {Boolean|undefined}       bufferEnabled
      * @property {Number|undefined}        bufferMaxItems
      * @property {Number|undefined}        bufferMaxTime
+     * @property {Boolean|undefined}        bufferItemPromises
      */
 
     /**
@@ -49,6 +50,7 @@ class BigQueryStorage {
         this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
         this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
         this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
+        this.bufferItemPromises  = _.get(opts, 'bufferItemPromises', null);
 
         this.dataset = null;
         this.table   = null;
@@ -74,7 +76,8 @@ class BigQueryStorage {
 
             bufferEnabled: this.bufferEnabled,
             bufferMaxItems: this.bufferMaxItems,
-            bufferMaxTime: this.bufferMaxTime
+            bufferMaxTime: this.bufferMaxTime,
+            bufferItemPromises: this.bufferItemPromises
         };
 
         this.dataset = BigQueryDataset.getDataset(this.datasetName, opts);
