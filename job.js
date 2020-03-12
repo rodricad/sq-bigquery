@@ -146,7 +146,7 @@ class BigQueryJob {
             const [response] = await job.getMetadata();
             const cacheHit = response.statistics.query.cacheHit;
             const cost = _getCost(response.statistics.query.totalBytesBilled);
-            this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+            this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             const [rows] = await job.getQueryResults({ autoPaginate: true });
             this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, rows.length, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
