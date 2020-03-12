@@ -13,6 +13,8 @@ const ErrorCode = {
 
 class BigQueryHelper {
 
+    static ErrorCode = ErrorCode;
+
     /**
      * @return {BigQuery}
      */
@@ -53,7 +55,7 @@ class BigQueryHelper {
      */
     static create(opts) {
 
-        let options = {
+        const options = {
             projectId: opts.projectId
         };
 
@@ -67,7 +69,7 @@ class BigQueryHelper {
             options.keyFilename = opts.keyFilename;
         }
 
-        let bigquery = new BigQuery(options);
+        const bigquery = new BigQuery(options);
 
         if (Variables.isTestingMode() === true) {
             bigquery.interceptors.push({

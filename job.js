@@ -143,10 +143,13 @@ class BigQueryJob {
             const [job] = await this.bigQuery.createQueryJob(jobOpts);
             this.logger.info('bigquery-job.js Executed job. Getting query results. name:%s', this.name);
 
-            let [rows, meta, response] = await job.getQueryResults();
+            const [response] = await job.getMetadata();
+            const cacheHit = response.statistics.query.cacheHit;
+            const cost = _getCost(response.statistics.query.totalBytesBilled);
+            this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
-            const cost = _getCost(response.totalBytesProcessed);
-            this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, response.cacheHit, response.totalRows, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+            const [rows] = await job.getQueryResults({ autoPaginate: true });
+            this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, rows.length, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             return rows;
         }
