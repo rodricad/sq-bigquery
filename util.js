@@ -6,6 +6,8 @@ let sinon = require('sinon');
 
 let BigQueryTable = require('./table');
 
+const JOB_ID = '628a5936-4b64-413a-91e7-7d3582955fdd';
+
 class BigQueryUtil {
 
     /**
@@ -350,6 +352,271 @@ class BigQueryUtil {
         return this.getBaseNock()
         .post(`/bigquery/v2/projects/${this.projectId}/datasets/${this.datasetName}/tables/${tableName}/insertAll`, body)
         .reply(200, response, this.getResponseHeaders());
+    }
+
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobValidation(queryStr) {
+
+        const body = {
+            "configuration": {
+                "dryRun": true,
+                "query": {
+                    "useLegacySql": false,
+                    "query": queryStr,
+                    "destination": null,
+                    "location": null,
+                    "jobId": null,
+                    "jobPrefix": null
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": "ae5e1bd4-533a-4561-9700-d52033c894a3"
+            }
+        };
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "OTRU1XB1jvTJ0DUEQl8lCg==",
+            "id": `${this.projectId}:US.`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "dryRun": true,
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "location": "US"
+            },
+            "status": {
+                "state": "DONE"
+            },
+            "statistics": {
+                "creationTime": "1584049237112",
+                "totalBytesProcessed": "67742205",
+                "query": {
+                    "totalBytesProcessed": "67742205",
+                    "totalBytesBilled": "0",
+                    "cacheHit": true,
+                    "referencedTables": [
+                        {
+                            "projectId": this.projectId,
+                            "datasetId": this.datasetName,
+                            "tableId": 'REFERENCED_TABLE_PLACEHOLDER'
+                        }
+                    ],
+                    "schema": {
+                        // ATTENTION: PLACEHOLDER
+                    },
+                    "statementType": "SELECT",
+                    "totalBytesProcessedAccuracy": "PRECISE"
+                }
+            }
+        };
+
+        return this.getBaseNock()
+        .post(`'/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobCreation(queryStr) {
+
+        const body = {
+            "configuration": {
+                "query": {
+                    "useLegacySql": false,
+                    "dryRun": false,
+                    "query": queryStr,
+                    "destination": null,
+                    "location": null,
+                    "jobId": null,
+                    "jobPrefix": null
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID
+            }
+        };
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "hXrqmor4rPFAQMb2iUjldQ==",
+            "id": `${this.projectId}:US.${JOB_ID}`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID,
+                "location": "US"
+            },
+            "statistics": {
+                "creationTime": "1584049237824",
+                "startTime": "1584049237943",
+                "query": {
+                    "statementType": "SELECT"
+                }
+            },
+            "status": {
+                "state": "RUNNING"
+            }
+        };
+
+        return this.getBaseNock()
+        .post(`'/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobMetadata(queryStr) {
+
+        const query = {
+            "location": "US"
+        };
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "oc0uFHxbW45VMWjAhlMQzw==",
+            "id": `${this.projectId}:US.${JOB_ID}`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID,
+                "location": "US"
+            },
+            "statistics": {
+                "creationTime": "1584049237824",
+                "startTime": "1584049237943",
+                "endTime": "1584049238136",
+                "totalBytesProcessed": "67742205",
+                "query": {
+                    "totalBytesProcessed": "67742205",
+                    "totalBytesBilled": "67742205",
+                    "cacheHit": false,
+                    "statementType": "SELECT"
+                }
+            },
+            "status": {
+                "state": "DONE"
+            }
+        };
+
+        return this.getBaseNock()
+        .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
+        .query(query)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {Array} rows
+     * @return {nock.Scope}
+     */
+    nockJobQueryResults(rows) {
+
+        const query = {
+            "location": "US"
+        };
+
+        const response = {
+            "kind": "bigquery#getQueryResultsResponse",
+            "etag": "Zi5KYdWkXCF0lxNxUxn42A==",
+            "schema": {
+                // ATTENTION: PLACEHOLDER
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID,
+                "location": "US"
+            },
+            "totalBytesProcessed": "67742205",
+            "jobComplete": true,
+            "cacheHit": false,
+            "totalRows": "1",
+            "rows": [
+                {
+                    "f": [
+                        { "v": "1.5813396E9" },
+                        { "v": "2019-06-26" },
+                        { "v": "1" },
+                        { "v": "Tablet" },
+                        { "v": "AdSense - Bible Trivia" },
+                        { "v": "BibleTrivia - AdSense- Desktop" },
+                        { "v": "30002" },
+                        { "v": "2556514254" },
+                        { "v": "5090628377" },
+                        { "v": "0" },
+                        { "v": "0" },
+                        { "v": "0" },
+                        { "v": "0" },
+                        { "v": "0" },
+                        { "v": "231" },
+                        { "v": "1" },
+                        { "v": "526729" },
+                        { "v": "118" },
+                        { "v": "245" }
+                    ]
+                }
+            ]
+        };
+
+        return this.getBaseNock()
+        .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
+        .query(query)
+        .reply(200, response);
     }
 
     patchInsertId() {

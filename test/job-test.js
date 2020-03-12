@@ -17,25 +17,6 @@ describe('BigQueryJob Test', function () {
     const BigQueryHelper = require('../helper');
     const BigQueryJob = require('../job');
 
-    let authScope = null;
-    let bigQueryUtil = null;
-
-    before(() => {
-        bigQueryUtil = new BigQueryUtil(PROJECT_ID, DATASET_NAME);
-
-        bigQueryUtil.cleanAll();
-        authScope = bigQueryUtil.nockOAuth();
-
-        const privateKeyFilename = path.resolve(__dirname, '../data/bigquery-credentials-test.json');
-        BigQueryHelper.createInstance({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
-    });
-
-    after(() => {
-        // expect(authScope.isDone()).to.equals(true);
-        bigQueryUtil.cleanAll();
-        BigQueryHelper.clearInstance();
-    });
-
     describe('1. init()', () => {
 
         it('1. Create instance with default values and make init. Expect to be initialized correctly', async () => {
@@ -160,7 +141,7 @@ describe('BigQueryJob Test', function () {
         });
     });
 
-    describe('2. getQueryOptions()', () => {
+    describe('3. getQueryOptions()', () => {
 
         let bigQueryJob = null;
 
@@ -215,6 +196,42 @@ describe('BigQueryJob Test', function () {
                 jobId: null,
                 jobPrefix: null
             });
+        });
+    });
+
+    describe('4. validate()', () => {
+
+        let authScope = null;
+        let bigQueryUtil = null;
+
+        before(() => {
+            bigQueryUtil = new BigQueryUtil(PROJECT_ID, DATASET_NAME);
+
+            bigQueryUtil.cleanAll();
+            authScope = bigQueryUtil.nockOAuth();
+
+            const privateKeyFilename = path.resolve(__dirname, '../data/bigquery-credentials-test.json');
+            BigQueryHelper.createInstance({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
+        });
+
+        beforeEach(() => {
+            sinon.restore();
+        });
+
+        after(() => {
+            expect(authScope.isDone()).to.equals(true);
+            sinon.restore();
+            bigQueryUtil.cleanAll();
+            BigQueryHelper.clearInstance();
+        });
+
+        it('1.', async () => {
+
+            const opts = _getOptions();
+            const bigQueryJob = new BigQueryJob(opts);
+
+            await bigQueryJob.init();
+            await bigQueryJob.validate();
         });
     });
 
