@@ -10,6 +10,7 @@ const BigQueryError = require('./error');
 const BigQueryFactory = require('./factory');
 
 const COST_THRESHOLD_IN_GB = 100;
+const COST_PER_TB = 5;
 
 class BigQueryJob {
 
@@ -18,6 +19,7 @@ class BigQueryJob {
      * @param {String=}   opts.name
      * @param {String}    opts.sqlFilename
      * @param {Number=}   [opts.costThresholdInGB = 100]
+     * @param {Number=}   [opts.costPerTB = 5]
      *
      * @param {BigQuery=} opts.bigQuery
      * @param {WinstonLogger|DummyLogger=} opts.logger
@@ -25,7 +27,8 @@ class BigQueryJob {
     constructor(opts) {
         this.name = opts.name || null;
         this.sqlFilename = opts.sqlFilename || null;
-        this.costThresholdInGB = opts.costThresholdInGB || COST_THRESHOLD_IN_GB;
+        this.costThresholdInGB = opts.costThresholdInGB != null ? opts.costThresholdInGB : COST_THRESHOLD_IN_GB;
+        this.costPerTB = opts.costPerTB != null ? opts.costPerTB : COST_PER_TB;
 
         this.bigQuery = opts.bigQuery || null ;
         this.logger = opts.logger || new DummyLogger();
@@ -89,7 +92,7 @@ class BigQueryJob {
     getQueryOptions(opts) {
         return {
             // This params CAN be overridden
-            dryRun: null,
+            dryRun: false,
             useLegacySql: false,
             query: this.getQuerySQL(),
 
@@ -114,7 +117,7 @@ class BigQueryJob {
 
         try {
             const [job] = await this.bigQuery.createQueryJob(jobOpts);
-            const cost = _getCost(job.metadata.statistics.totalBytesProcessed);
+            const cost = _getCost(job.metadata.statistics.totalBytesProcessed, this.costPerTB);
 
             if (cost.gb >= this.costThresholdInGB) {
                 this.logger.notify('BigQuery Job | Expensive Query').steps(0,1).msg('bigquery-job.js Expensive query over threshold. name:%s costThresholdInGB:%s. Estimated cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes)
@@ -144,7 +147,7 @@ class BigQueryJob {
 
             const [response] = await job.getMetadata();
             const cacheHit = response.statistics.query.cacheHit;
-            const cost = _getCost(response.statistics.query.totalBytesBilled);
+            const cost = _getCost(response.statistics.query.totalBytesBilled, this.costPerTB);
             this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             const [rows] = await this._getQueryResults(job);
@@ -169,15 +172,16 @@ class BigQueryJob {
 
 /**
  * @param {String} bytes
+ * @param {Number} costPerTB
  * @return {{mb: string, bytes: string, price: string, gb: string, tb: string}}
  * @private
  */
-function _getCost(bytes) {
+function _getCost(bytes, costPerTB) {
     let kb = parseInt(bytes) / 1024;
     let mb = kb / 1024;
     let gb = mb / 1024;
     let tb = gb / 1024;
-    let price = tb * 5;
+    let price = tb * costPerTB;
 
     return {
         tb: tb.toFixed(4),

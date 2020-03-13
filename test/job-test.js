@@ -180,7 +180,7 @@ describe('BigQueryJob Test', function () {
             let opts = bigQueryJob.getQueryOptions();
 
             expect(opts).to.eql({
-                dryRun: null,
+                dryRun: false,
                 useLegacySql: false,
                 query: 'SELECT some_field, other_field FROM `DATASET.TABLE`',
                 destination: null,
