@@ -104,9 +104,7 @@ describe('BigQueryTable Test', function () {
 
             bigQueryUtil.patchInsertId();
 
-            let item = BigQueryTable.getRawRow({
-                title: 'value'
-            });
+            let item = _getItemSet(1)[0];
 
             let scope = bigQueryUtil.nockInsert(table.name, item);
             let insertSpy = sinon.spy(table.table, 'insert');
@@ -119,7 +117,7 @@ describe('BigQueryTable Test', function () {
                     [{
                         "insertId": "00000000-0000-0000-0000-000000000000",
                         "json": {
-                            "title": "value"
+                            "value": 0
                         }
                     }],
                     {
@@ -139,12 +137,7 @@ describe('BigQueryTable Test', function () {
             let notify = NotifyUtil.getNotify(BufferQueue);
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5});
-            let items = [];
-
-            for (let i = 0; i < 5; i++) {
-                let item = BigQueryTable.getRawRow({ title: 'value ' + i });
-                items.push(item);
-            }
+            let items = _getItemSet(5);
 
             bigQueryUtil.patchInsertId();
 
@@ -168,18 +161,15 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2});
 
-            let item1 = BigQueryTable.getRawRow({ value: 1 });
-            let item2 = BigQueryTable.getRawRow({ value: 'string' });
+            let items = _getItemSet(2);
 
             bigQueryUtil.patchInsertId();
 
-            let scope = bigQueryUtil.nockInsertError(table.name, [item1, item2]);
+            let scope = bigQueryUtil.nockInsertError(table.name, items);
 
-            // Valid item insert
-            table.insert(item1);
-
-            // Invalid item insert
-            table.insert(item2);
+            items.forEach(item =>{
+                table.insert(item);
+            });
 
             return notify.deferred
             .then(() => {
@@ -202,17 +192,17 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: true, bufferMaxTime: 100});
 
-            let item1 = BigQueryTable.getRawRow({ value: 1 });
-            let item2 = BigQueryTable.getRawRow({ value: 'string' });
+            let items = _getItemSet(2);
 
             bigQueryUtil.patchInsertId();
 
-            let scope = bigQueryUtil.nockInsert(table.name, [item1, item2]);
+            let scope = bigQueryUtil.nockInsert(table.name, items);
 
-            let promise1 = table.insert(item1);
-            let promise2 = table.insert(item2);
+            let promises = items.map(item =>{
+                return table.insert(item);
+            });
 
-            return Promise.all([promise1, promise2])
+            return Promise.all(promises)
             .then(() => {
                 scope.done();
             })
@@ -225,7 +215,7 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
 
-            let items = _.map([{ value: 1 }, { value: 'string' }], BigQueryTable.getRawRow);
+            let items = _getItemSet(2);
 
             try {
                 await table.insert(items);
@@ -256,12 +246,8 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: false, bufferMaxTime: 100});
 
-            let itemSet1 = [1,2,3,4,5].map(i => {
-                return BigQueryTable.getRawRow({ value: i });
-            });
-            let itemSet2 = [6,7,8].map(i => {
-                return BigQueryTable.getRawRow({ value: i });
-            });
+            let itemSet1 = _getItemSet(5);
+            let itemSet2 = _getItemSet(3);
 
             bigQueryUtil.patchInsertId();
 
@@ -276,6 +262,31 @@ describe('BigQueryTable Test', function () {
                 scope2.done();
             })
             .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
+
+        it('8. Ensure flush() is not called unnecessarily', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: false, bufferMaxTime: 100});
+
+            let itemSet1 = _getItemSet(3);
+
+            let flushSpy = sinon.spy(table.bufferQueue, 'flush');
+
+            bigQueryUtil.patchInsertId();
+
+            let scope1 = bigQueryUtil.nockInsert(table.name, itemSet1);
+
+            table.insert(itemSet1);
+
+            return Promise.delay(350)
+            .then(() => {
+                expect(flushSpy.callCount).to.eql(1);
+                scope1.done();
+            })
+            .finally(() => {
+                flushSpy.restore();
                 bigQueryUtil.restoreInsertId();
             });
         });
@@ -294,6 +305,22 @@ describe('BigQueryTable Test', function () {
         let options = _getOptions(opts);
         let dataset = BigQueryDataset.getDataset(name, options);
         return dataset.getTable(TABLE_NAME);
+    }
+
+    /**
+     * Generates array of test items
+     * @param size amount of test items to return in array
+     * @return {Array}
+     * @private
+     */
+    function _getItemSet(size) {
+        let array = [];
+        for(let i=0; i<size; i++) {
+            array.push(i);
+        }
+        return array.map(i => {
+            return BigQueryTable.getRawRow({ value: i });
+        });
     }
 
     /**
