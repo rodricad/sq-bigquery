@@ -248,19 +248,14 @@ describe('BigQueryJob Test', function () {
             const queryStr = bigQueryJob.getQuerySQL();
             const rows = _getResults();
 
-            const jobValidationScope = bigQueryUtil.nockJobValidation(queryStr);
-            const jobCreationScope = bigQueryUtil.nockJobCreation(queryStr);
-            const jobMetadataScope = bigQueryUtil.nockJobMetadata(queryStr);
-            const jobQueryResultsStub = bigQueryUtil.stubJobQueryResults(rows);
+            const jobScope = bigQueryUtil.nockJob(queryStr, rows);
 
             const results = await bigQueryJob.run();
 
-            jobValidationScope.done();
-            jobCreationScope.done();
-            jobMetadataScope.done();
-            expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
-            const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
-            expect(jobId).to.equals('628a5936-4b64-413a-91e7-7d3582955fdd', 'Job should match test jobId at getQueryResults');
+            jobScope.done();
+
+            expect(results).to.instanceOf(Array);
+            expect(results).to.length(3);
         });
     });
 

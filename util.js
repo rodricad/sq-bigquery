@@ -3,6 +3,7 @@
 const nock = require('nock');
 const sinon = require('sinon');
 const _ = require('lodash');
+const { expect } = require('chai');
 
 const BigQueryTable = require('./table');
 const BigQueryJob = require('./job');
@@ -565,6 +566,52 @@ class BigQueryUtil {
      */
     stubJobQueryResults(rows) {
         return sinon.stub(BigQueryJob.prototype, '_getQueryResults').resolves([rows]);
+    }
+
+    /**
+     * @typedef {Object} NockJobResponse
+     * @property {nock.Scope} jobMetadataScope
+     * @property {nock.Scope} jobCreationScope
+     * @property {nock.Scope} jobMetadataScope
+     * @property jobQueryResultsStub
+     * @property {Function} done
+     */
+
+    /**
+     * @param {String} queryStr
+     * @param {Object[]} rows
+     * @return {NockJobResponse}
+     */
+    nockJob(queryStr, rows) {
+        const jobValidationScope = this.nockJobValidation(queryStr);
+        const jobCreationScope = this.nockJobCreation(queryStr);
+        const jobMetadataScope = this.nockJobMetadata(queryStr);
+        const jobQueryResultsStub = this.stubJobQueryResults(rows);
+
+        return {
+            jobValidationScope,
+            jobCreationScope,
+            jobMetadataScope,
+            jobQueryResultsStub,
+            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub)
+        }
+    }
+
+    /**
+     * @param {nock.Scope} jobValidationScope
+     * @param {nock.Scope} jobCreationScope
+     * @param {nock.Scope} jobMetadataScope
+     * @param jobQueryResultsStub
+     */
+    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub) {
+        jobValidationScope.done();
+        jobCreationScope.done();
+        jobMetadataScope.done();
+
+        expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
+        const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
+        expect(jobId).to.equals(JOB_ID, 'Job should match test jobId at getQueryResults');
+        jobQueryResultsStub.restore();
     }
 
     patchInsertId() {
