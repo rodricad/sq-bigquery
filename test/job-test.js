@@ -15,7 +15,7 @@ describe('BigQueryJob Test', function () {
     const DATASET_NAME = 'DatasetNew';
 
     const BigQueryUtil = require('../util');
-    const BigQueryHelper = require('../helper');
+    const BigQueryFactory = require('../factory');
     const BigQueryJob = require('../job');
 
     const WinstonLogger = require('sq-logger/winston-logger');
@@ -26,11 +26,11 @@ describe('BigQueryJob Test', function () {
             projectId: PROJECT_ID,
             keyFilename: path.resolve(__dirname, '../data/bigquery-credentials-test.json')
         };
-        BigQueryHelper.createInstance(bigQueryOpts);
+        BigQueryFactory.createInstance(bigQueryOpts);
     });
 
     after(() => {
-        BigQueryHelper.clearInstance();
+        BigQueryFactory.clearInstance();
     });
 
     describe('1. init()', () => {
@@ -56,7 +56,7 @@ describe('BigQueryJob Test', function () {
             expect(bigQueryJob.sqlStr).to.equals('SELECT some_field, other_field FROM `${dataset}.${table}`');
             assert.isFunction(bigQueryJob.sqlTemplate, 'sqlTemplate should be a function');
 
-            const getInstanceSpy = sinon.spy(BigQueryHelper, 'getInstance');
+            const getInstanceSpy = sinon.spy(BigQueryFactory, 'getInstance');
             await bigQueryJob.init();
             expect(getInstanceSpy.called).to.equals(false);
             getInstanceSpy.restore();
@@ -65,7 +65,7 @@ describe('BigQueryJob Test', function () {
         it('2. Create instance with custom values and make init. Expect to be initialized correctly', async () => {
 
             const privateKeyFilename = path.resolve(__dirname, '../data/bigquery-credentials-test.json');
-            const bigQuery = BigQueryHelper.create({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
+            const bigQuery = BigQueryFactory.create({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
             const logger = new DummyLogger();
 
             const opts = _getOptions({ logger, bigQuery, costThresholdInGB: 10 });

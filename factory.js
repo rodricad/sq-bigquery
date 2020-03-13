@@ -11,7 +11,7 @@ const ErrorCode = {
     ERROR_INSTANCE_NOT_CREATED: 'ERROR_INSTANCE_NOT_CREATED'
 };
 
-class BigQueryHelper {
+class BigQueryFactory {
 
     static ErrorCode = ErrorCode;
 
@@ -37,7 +37,7 @@ class BigQueryHelper {
         if (_instance != null) {
             throw new Exception(ErrorCode.ERROR_INSTANCE_ALREADY_CREATED, 'BigQuery instance is already created and initialized. Use .getInstance()');
         }
-        _instance = BigQueryHelper.create(opts);
+        _instance = BigQueryFactory.create(opts);
         return _instance;
     }
 
@@ -84,4 +84,4 @@ class BigQueryHelper {
     }
 }
 
-module.exports = BigQueryHelper;
+module.exports = BigQueryFactory;

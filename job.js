@@ -7,7 +7,7 @@ const Duration = require('sq-toolkit/duration');
 
 const template = require('./lib/utils/template');
 const BigQueryError = require('./error');
-const BigQueryHelper = require('./helper');
+const BigQueryFactory = require('./factory');
 
 const COST_THRESHOLD_IN_GB = 100;
 
@@ -49,7 +49,7 @@ class BigQueryJob {
         if (this.isInitialized() === true) {
             return this;
         }
-        this.bigQuery = this.bigQuery || BigQueryHelper.getInstance();
+        this.bigQuery = this.bigQuery || BigQueryFactory.getInstance();
         this.sqlStr = await fs.readFile(this.sqlFilename, 'utf8');
         this.sqlTemplate = template(this.sqlStr);
         this._initialized = true;

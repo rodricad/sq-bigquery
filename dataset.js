@@ -5,7 +5,7 @@ let BigQuery = require('@google-cloud/bigquery').BigQuery;
 
 let BigQueryTable = require('./table');
 let BigQueryError = require('./error');
-let BigQueryHelper = require('./helper');
+let BigQueryFactory = require('./factory');
 
 class BigQueryDataset {
 
@@ -111,7 +111,7 @@ class BigQueryDataset {
      * @return {BigQueryDataset}
      */
     static getDataset(datasetName, opts) {
-        let bigquery = BigQueryHelper.create(opts);
+        let bigquery = BigQueryFactory.create(opts);
         let dataset  = bigquery.dataset(datasetName);
 
         return new BigQueryDataset(dataset, opts);
@@ -123,7 +123,7 @@ class BigQueryDataset {
      * @return {Promise.<BigQueryDataset>}
      */
     static createDataset(datasetName, opts) {
-        let bigquery = BigQueryHelper.create(opts);
+        let bigquery = BigQueryFactory.create(opts);
 
         return bigquery.createDataset(datasetName)
         .catch(BigQueryError.parseErrorAndThrow)
