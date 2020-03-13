@@ -25,7 +25,7 @@ describe('BigQueryDataset Test', function () {
     });
 
     after(() => {
-        expect(authScope.isDone()).to.equals(true);
+        authScope.done();
         bigQueryUtil.cleanAll();
     });
 

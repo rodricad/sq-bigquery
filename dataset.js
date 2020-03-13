@@ -1,11 +1,11 @@
 'use strict';
 
 let _ = require('lodash');
-let Variables = require('sq-toolkit/variables');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
 
 let BigQueryTable = require('./table');
 let BigQueryError = require('./error');
+let BigQueryFactory = require('./factory');
 
 class BigQueryDataset {
 
@@ -111,7 +111,7 @@ class BigQueryDataset {
      * @return {BigQueryDataset}
      */
     static getDataset(datasetName, opts) {
-        let bigquery = BigQueryDataset._createBigQuery(opts);
+        let bigquery = BigQueryFactory.create(opts);
         let dataset  = bigquery.dataset(datasetName);
 
         return new BigQueryDataset(dataset, opts);
@@ -123,48 +123,13 @@ class BigQueryDataset {
      * @return {Promise.<BigQueryDataset>}
      */
     static createDataset(datasetName, opts) {
-        let bigquery = BigQueryDataset._createBigQuery(opts);
+        let bigquery = BigQueryFactory.create(opts);
 
         return bigquery.createDataset(datasetName)
         .catch(BigQueryError.parseErrorAndThrow)
         .then(data => {
             return new BigQueryDataset(data[0], opts);
         });
-    }
-
-    /**
-     * @param {DatasetOptions} opts
-     * @return {BigQuery}
-     * @private
-     */
-    static _createBigQuery(opts) {
-
-        let options = {
-            projectId: opts.projectId
-        };
-
-        if (opts.clientEmail != null && opts.privateKey != null) {
-            options.credentials = {
-                client_email: opts.clientEmail,
-                private_key: opts.privateKey
-            };
-        }
-        else if (opts.keyFilename != null) {
-            options.keyFilename = opts.keyFilename;
-        }
-
-        let bigquery = new BigQuery(options);
-
-        if (Variables.isTestingMode() === true) {
-            bigquery.interceptors.push({
-                request: function (reqOpts) {
-                    reqOpts.gzip = false;
-                    return reqOpts
-                }
-            });
-        }
-
-        return bigquery;
     }
 }
 
