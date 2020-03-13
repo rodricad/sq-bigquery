@@ -106,7 +106,7 @@ class BigQueryTable {
             raw: true
         };
         if(this.logger != null) {
-            this.logger.debug(`sq-bigquery[${this.name}]:: Inserting ${items.length} rows`);
+            this.logger.info(`sq-bigquery[${this.name}]:: Inserting ${items.length} rows`);
         }
         return this.table.insert(items, options)
         .catch(BigQueryError.parseErrorAndThrow)

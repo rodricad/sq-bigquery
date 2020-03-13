@@ -198,9 +198,9 @@ describe('BigQueryTable Test', function () {
             });
         });
 
-        it('4. Insert objects with buffer enabled and buffer item promises enabled. maxItems = 2. Expect promises returned', function () {
+        it('4. Insert objects with buffer enabled and buffer item promises enabled. maxItems = 5, maxTime = 100ms. Expect promises returned', function () {
 
-            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: true, bufferMaxTime: 100});
 
             let item1 = BigQueryTable.getRawRow({ value: 1 });
             let item2 = BigQueryTable.getRawRow({ value: 'string' });
@@ -250,7 +250,35 @@ describe('BigQueryTable Test', function () {
             .then(() => {
                 scope.done();
             });
-        })
+        });
+
+        it('7. Ensure flush() is called when buffer was over filled and insert request returns a delayed response', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: false, bufferMaxTime: 100});
+
+            let itemSet1 = [1,2,3,4,5].map(i => {
+                return BigQueryTable.getRawRow({ value: i });
+            });
+            let itemSet2 = [6,7,8].map(i => {
+                return BigQueryTable.getRawRow({ value: i });
+            });
+
+            bigQueryUtil.patchInsertId();
+
+            let scope1 = bigQueryUtil.nockInsert(table.name, itemSet1, 300);
+            let scope2 = bigQueryUtil.nockInsert(table.name, itemSet2);
+
+            table.insert(itemSet1.concat(itemSet2));
+
+            return Promise.delay(350)
+            .then(() => {
+                scope1.done();
+                scope2.done();
+            })
+            .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
     });
 
     /**

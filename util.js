@@ -305,9 +305,10 @@ class BigQueryUtil {
     /**
      * @param {String} tableName
      * @param {Object} rows
+     * @param {Number=2} delay
      * @return {nock.Scope}
      */
-    nockInsert(tableName, rows) {
+    nockInsert(tableName, rows, delay=2) {
 
         let items = BigQueryUtil.parseInsertRows(rows);
         let body  = { rows: items };
@@ -316,6 +317,7 @@ class BigQueryUtil {
 
         return this.getBaseNock()
         .post(`/bigquery/v2/projects/${this.projectId}/datasets/${this.datasetName}/tables/${tableName}/insertAll`, body)
+        .delay(delay)
         .reply(200, response, this.getResponseHeaders());
     }
 
