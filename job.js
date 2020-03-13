@@ -63,6 +63,7 @@ class BigQueryJob {
      * @return {Object|null}
      */
     getQueryParams() {
+        // ATTENTION: This should be overridden to pass parameters to the sql template
         return null;
     }
 
@@ -70,6 +71,7 @@ class BigQueryJob {
      * @return {String}
      */
     getQuerySQLDebug() {
+        // ATTENTION: This should be overridden to a debug comment at the header of each executed query
         return '';
     }
 
