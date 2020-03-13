@@ -123,7 +123,16 @@ describe('BigQueryJob Test', function () {
         it('2. Build query with only [dataset] variable. Expect to throw exception ', async () => {
 
             try {
-                const getQueryParamsStub = sinon.stub(bigQueryJob, 'getQueryParams').returns({ dataset: 'DATASET' });
+                class TestBigQueryJob extends BigQueryJob {
+                    getQueryParams() {
+                        return { dataset: 'DATASET' };
+                    }
+                }
+
+                const opts = _getOptions();
+                const bigQueryJob = new TestBigQueryJob(opts);
+                await bigQueryJob.init();
+
                 bigQueryJob.getQuerySQL();
                 expect.fail('getQuerySQL() should have failed');
             }
@@ -132,28 +141,45 @@ describe('BigQueryJob Test', function () {
                 expect(err.message).to.equals('table is not defined');
                 expect(err.stack).to.contains('TemplateException: ReferenceError: table is not defined');
             }
-            finally {
-                sinon.restore();
-            }
         });
 
         it('3. Build query with variables. Expect to build query successfully ', async () => {
 
-            const getQueryParamsStub = sinon.stub(bigQueryJob, 'getQueryParams').returns({ dataset: 'DATASET', table: 'TABLE' });
+            class TestBigQueryJob extends BigQueryJob {
+                getQueryParams() {
+                    return { dataset: 'DATASET', table: 'TABLE' };
+                }
+            }
+
+            const opts = _getOptions();
+            const bigQueryJob = new TestBigQueryJob(opts);
+            await bigQueryJob.init();
+
             const querySQL = bigQueryJob.getQuerySQL();
 
             expect(querySQL).to.equals('SELECT some_field, other_field FROM `DATASET.TABLE`');
-            getQueryParamsStub.restore();
         });
 
         it('4. Build query with variables and debug string. Expect to build query successfully ', async () => {
 
-            const getQuerySQLDebugStub = sinon.stub(bigQueryJob, 'getQuerySQLDebug').returns('-- JobId: JOB_ID\n-- JobName: JOB_NAME');
-            const getQueryParamsStub = sinon.stub(bigQueryJob, 'getQueryParams').returns({ dataset: 'DATASET', table: 'TABLE' });
+            class TestBigQueryJob extends BigQueryJob {
+
+                getQuerySQLDebug() {
+                    return '-- JobId: JOB_ID\n-- JobName: JOB_NAME';
+                }
+
+                getQueryParams() {
+                    return { dataset: 'DATASET', table: 'TABLE' };
+                }
+            }
+
+            const opts = _getOptions();
+            const bigQueryJob = new TestBigQueryJob(opts);
+            await bigQueryJob.init();
+
             const querySQL = bigQueryJob.getQuerySQL();
 
             expect(querySQL).to.equals('-- JobId: JOB_ID\n-- JobName: JOB_NAME\nSELECT some_field, other_field FROM `DATASET.TABLE`');
-            getQueryParamsStub.restore();
         });
     });
 
@@ -162,8 +188,14 @@ describe('BigQueryJob Test', function () {
         let bigQueryJob = null;
 
         before(async () => {
+            class TestBigQueryJob extends BigQueryJob {
+                getQueryParams() {
+                    return { dataset: 'DATASET', table: 'TABLE' };
+                }
+            }
+
             const opts = _getOptions();
-            bigQueryJob = new BigQueryJob(opts);
+            bigQueryJob = new TestBigQueryJob(opts);
             await bigQueryJob.init();
         });
 
@@ -175,8 +207,8 @@ describe('BigQueryJob Test', function () {
             sinon.restore();
         });
 
-        it('1. Get query params with default values. Expect to return correct values with defaults', () => {
-            const getQueryParamsStub = sinon.stub(bigQueryJob, 'getQueryParams').returns({ dataset: 'DATASET', table: 'TABLE' });
+        it('1. Get query params with default values. Expect to return correct values with defaults', async () => {
+
             let opts = bigQueryJob.getQueryOptions();
 
             expect(opts).to.eql({
@@ -191,7 +223,6 @@ describe('BigQueryJob Test', function () {
         });
 
         it('2. Get query params with custom values. Expect to override only allowed vales and return correct values', () => {
-            const getQueryParamsStub = sinon.stub(bigQueryJob, 'getQueryParams').returns({ dataset: 'DATASET', table: 'TABLE' });
 
             let opts = bigQueryJob.getQueryOptions({
                 dryRun: false,
