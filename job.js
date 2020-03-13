@@ -17,7 +17,7 @@ class BigQueryJob {
      * @param {Object}    opts
      * @param {String=}   opts.name
      * @param {String}    opts.sqlFilename
-     * @param {Number=}   opts.costThresholdInGB
+     * @param {Number=}   [opts.costThresholdInGB = 100]
      *
      * @param {BigQuery=} opts.bigQuery
      * @param {WinstonLogger|DummyLogger=} opts.logger
