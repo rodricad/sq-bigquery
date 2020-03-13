@@ -147,13 +147,13 @@ class BigQueryJob {
             const [job] = await this.bigQuery.createQueryJob(jobOpts);
             this.logger.info('bigquery-job.js Executed job. Getting query results. name:%s', this.name);
 
-            const [response] = await job.getMetadata();
-            const cacheHit = response.statistics.query.cacheHit;
-            const cost = _getCost(response.statistics.query.totalBytesBilled, this.costPerTB);
-            this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
-
             const [rows] = await this._getQueryResults(job);
-            this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, rows.length, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+            this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms', this.name, rows.length, elapsed.end());
+
+            const [metadata] = await job.getMetadata();
+            const cacheHit = metadata.statistics.query.cacheHit;
+            const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
+            this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             return rows;
         }

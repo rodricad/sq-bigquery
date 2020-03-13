@@ -570,7 +570,7 @@ class BigQueryUtil {
 
     /**
      * @typedef {Object} NockJobResponse
-     * @property {nock.Scope} jobMetadataScope
+     * @property {nock.Scope} jobValidationScope
      * @property {nock.Scope} jobCreationScope
      * @property {nock.Scope} jobMetadataScope
      * @property jobQueryResultsStub
