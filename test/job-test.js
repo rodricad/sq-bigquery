@@ -289,7 +289,7 @@ describe('BigQueryJob Test', function () {
     function _getOptionsComplete(opts= {}) {
         return {
             ..._getOptions(),
-            sqlFilename: path.resolve(__dirname, '../tester.sql')
+            sqlFilename: path.resolve(__dirname, './data/dummy-query-complete.sql')
         };
     }
 
