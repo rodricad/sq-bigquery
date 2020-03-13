@@ -67,7 +67,6 @@ class BigQueryJob {
      * @return {String}
      */
     getQuerySQLDebug() {
-        // TODO: Make this happen
         return '';
     }
 
