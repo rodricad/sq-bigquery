@@ -282,7 +282,7 @@ describe('BigQueryTable Test', function () {
 
             return Promise.delay(350)
             .then(() => {
-                expect(flushSpy.callCount).to.eql(1);
+                expect(flushSpy.callCount).to.eql(2); // Once for actual flush, once to clear interval
                 scope1.done();
             })
             .finally(() => {
