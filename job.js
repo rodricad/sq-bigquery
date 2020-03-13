@@ -190,11 +190,4 @@ function _getCost(bytes) {
     };
 }
 
-// Exception: Unexpected error determining execution environment: request to http://169.254.169.254/computeMetadata/v1/instance failed, reason: connect EHOSTDOWN 169.254.169.254:80 - Local (192.168.0.125:54574)
-//     at Function.parseError (error.js:15:19)
-// at Function.parseErrorAndThrow (error.js:44:29)
-// at BigQueryJob.validate (job.js:128:27)
-// at processTicksAndRejections (internal/process/task_queues.js:93:5)
-
-
 module.exports = BigQueryJob;
