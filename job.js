@@ -130,7 +130,7 @@ class BigQueryJob {
     }
 
     /**
-     * @return {Promise<void>}
+     * @return {Promise<Object[]>}
      */
     async run() {
         let elapsed = Duration.start();
@@ -148,7 +148,7 @@ class BigQueryJob {
             const cost = _getCost(response.statistics.query.totalBytesBilled);
             this.logger.info('bigquery-job.js Start getting results. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
-            const [rows] = await job.getQueryResults({ autoPaginate: true });
+            const [rows] = await this._getQueryResults(job);
             this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, rows.length, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             return rows;
@@ -156,6 +156,15 @@ class BigQueryJob {
         catch(err) {
             BigQueryError.parseErrorAndThrow(err);
         }
+    }
+
+    /**
+     * @param job
+     * @return {Promise<QueryRowsResponse> | void}
+     * @private
+     */
+    _getQueryResults(job) {
+        return job.getQueryResults({ autoPaginate: true });
     }
 }
 
@@ -180,5 +189,12 @@ function _getCost(bytes) {
         price: price.toFixed(4)
     };
 }
+
+// Exception: Unexpected error determining execution environment: request to http://169.254.169.254/computeMetadata/v1/instance failed, reason: connect EHOSTDOWN 169.254.169.254:80 - Local (192.168.0.125:54574)
+//     at Function.parseError (error.js:15:19)
+// at Function.parseErrorAndThrow (error.js:44:29)
+// at BigQueryJob.validate (job.js:128:27)
+// at processTicksAndRejections (internal/process/task_queues.js:93:5)
+
 
 module.exports = BigQueryJob;

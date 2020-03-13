@@ -1,11 +1,11 @@
 'use strict';
 
-let uuid = require('uuid');
-let nock = require('nock');
-let sinon = require('sinon');
-let _ = require('lodash');
+const nock = require('nock');
+const sinon = require('sinon');
+const _ = require('lodash');
 
-let BigQueryTable = require('./table');
+const BigQueryTable = require('./table');
+const BigQueryJob = require('./job');
 
 const JOB_ID = '628a5936-4b64-413a-91e7-7d3582955fdd';
 
@@ -562,60 +562,9 @@ class BigQueryUtil {
 
     /**
      * @param {Array} rows
-     * @return {nock.Scope}
      */
-    nockJobQueryResults(rows) {
-
-        const query = {
-            "location": "US"
-        };
-
-        const response = {
-            "kind": "bigquery#getQueryResultsResponse",
-            "etag": "Zi5KYdWkXCF0lxNxUxn42A==",
-            "schema": {
-                // ATTENTION: PLACEHOLDER
-            },
-            "jobReference": {
-                "projectId": this.projectId,
-                "jobId": JOB_ID,
-                "location": "US"
-            },
-            "totalBytesProcessed": "67742205",
-            "jobComplete": true,
-            "cacheHit": false,
-            "totalRows": rows.length,
-            "rows": [
-                {
-                    "f": [
-                        { "v": "1.5813396E9" },
-                        { "v": "2019-06-26" },
-                        { "v": "1" },
-                        { "v": "Tablet" },
-                        { "v": "AdSense - Bible Trivia" },
-                        { "v": "BibleTrivia - AdSense- Desktop" },
-                        { "v": "30002" },
-                        { "v": "2556514254" },
-                        { "v": "5090628377" },
-                        { "v": "0" },
-                        { "v": "0" },
-                        { "v": "0" },
-                        { "v": "0" },
-                        { "v": "0" },
-                        { "v": "231" },
-                        { "v": "1" },
-                        { "v": "526729" },
-                        { "v": "118" },
-                        { "v": "245" }
-                    ]
-                }
-            ]
-        };
-
-        return this.getBaseNock()
-        .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
-        .query(query)
-        .reply(200, response);
+    stubJobQueryResults(rows) {
+        return sinon.stub(BigQueryJob.prototype, '_getQueryResults').resolves([rows]);
     }
 
     patchInsertId() {

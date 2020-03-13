@@ -4,6 +4,7 @@ describe('BigQueryJob Test', function () {
 
     const path = require('path');
     const sinon = require('sinon');
+    const _ = require('lodash');
     const chai = require('chai');
     const { expect, assert } = chai;
 
@@ -16,6 +17,21 @@ describe('BigQueryJob Test', function () {
     const BigQueryUtil = require('../util');
     const BigQueryHelper = require('../helper');
     const BigQueryJob = require('../job');
+
+    const WinstonLogger = require('sq-logger/winston-logger');
+    const logger = new WinstonLogger({ console: { enabled: true } });
+
+    before(() => {
+        const bigQueryOpts = {
+            projectId: PROJECT_ID,
+            keyFilename: path.resolve(__dirname, '../data/bigquery-credentials-test.json')
+        };
+        BigQueryHelper.createInstance(bigQueryOpts);
+    });
+
+    after(() => {
+        BigQueryHelper.clearInstance();
+    });
 
     describe('1. init()', () => {
 
@@ -30,7 +46,7 @@ describe('BigQueryJob Test', function () {
             expect(bigQueryJob.bigQuery).to.equals(null);
             expect(bigQueryJob.sqlStr).to.equals(null);
             expect(bigQueryJob.sqlTemplate).to.equals(null);
-            expect(bigQueryJob.logger).to.instanceOf(DummyLogger);
+            expect(bigQueryJob.logger).to.instanceOf(WinstonLogger);
             expect(bigQueryJob.isInitialized()).to.equals(false);
 
             await bigQueryJob.init();
@@ -199,19 +215,16 @@ describe('BigQueryJob Test', function () {
         });
     });
 
-    describe.only('4. run()', () => {
+    describe('4. run()', () => {
 
         let authScope = null;
         let bigQueryUtil = null;
 
         before(() => {
             bigQueryUtil = new BigQueryUtil(PROJECT_ID, DATASET_NAME);
-
             bigQueryUtil.cleanAll();
-            authScope = bigQueryUtil.nockOAuth();
 
-            const privateKeyFilename = path.resolve(__dirname, '../data/bigquery-credentials-test.json');
-            BigQueryHelper.createInstance({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
+            authScope = bigQueryUtil.nockOAuth();
         });
 
         beforeEach(() => {
@@ -219,10 +232,10 @@ describe('BigQueryJob Test', function () {
         });
 
         after(() => {
-            expect(authScope.isDone()).to.equals(true);
+            authScope.done();
+
             sinon.restore();
             bigQueryUtil.cleanAll();
-            BigQueryHelper.clearInstance();
         });
 
         it('1. Create BigQueryJob and make run(). Expect to validate first and the return rows', async () => {
@@ -233,16 +246,21 @@ describe('BigQueryJob Test', function () {
             await bigQueryJob.init();
 
             const queryStr = bigQueryJob.getQuerySQL();
+            const rows = _getResults();
 
             const jobValidationScope = bigQueryUtil.nockJobValidation(queryStr);
             const jobCreationScope = bigQueryUtil.nockJobCreation(queryStr);
             const jobMetadataScope = bigQueryUtil.nockJobMetadata(queryStr);
+            const jobQueryResultsStub = bigQueryUtil.stubJobQueryResults(rows);
 
-            await bigQueryJob.run();
+            const results = await bigQueryJob.run();
 
             jobValidationScope.done();
             jobCreationScope.done();
             jobMetadataScope.done();
+            expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
+            const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
+            expect(jobId).to.equals('628a5936-4b64-413a-91e7-7d3582955fdd', 'Job should match test jobId at getQueryResults');
         });
     });
 
@@ -252,12 +270,13 @@ describe('BigQueryJob Test', function () {
      * @private
      */
     function _getOptions(opts= {}) {
+
         return {
             name: 'TestQuery',
             sqlFilename: path.resolve(__dirname, './data/dummy-query.sql'),
             costThresholdInGB: null,
             bigQuery: null,
-            logger: null,
+            logger: logger,
             ...opts
         };
     }
@@ -270,7 +289,16 @@ describe('BigQueryJob Test', function () {
     function _getOptionsComplete(opts= {}) {
         return {
             ..._getOptions(),
-            sqlFilename: path.resolve(__dirname, './data/dummy-query-complete.sql')
+            sqlFilename: path.resolve(__dirname, '../tester.sql')
         };
+    }
+
+    /**
+     * @return {Array}
+     * @private
+     */
+    function _getResults() {
+        const items = require('./data/dummy-query-complete-results');
+        return _.cloneDeep(items);
     }
 });
