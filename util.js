@@ -3,6 +3,7 @@
 let uuid = require('uuid');
 let nock = require('nock');
 let sinon = require('sinon');
+let _ = require('lodash');
 
 let BigQueryTable = require('./table');
 
@@ -360,7 +361,7 @@ class BigQueryUtil {
      */
     nockJobValidation(queryStr) {
 
-        const body = {
+        const body = _.matches({
             "configuration": {
                 "dryRun": true,
                 "query": {
@@ -373,10 +374,9 @@ class BigQueryUtil {
                 }
             },
             "jobReference": {
-                "projectId": this.projectId,
-                "jobId": "ae5e1bd4-533a-4561-9700-d52033c894a3"
+                "projectId": this.projectId
             }
-        };
+        });
 
         const response = {
             "kind": "bigquery#job",
@@ -413,7 +413,7 @@ class BigQueryUtil {
                 "query": {
                     "totalBytesProcessed": "67742205",
                     "totalBytesBilled": "0",
-                    "cacheHit": true,
+                    "cacheHit": false,
                     "referencedTables": [
                         {
                             "projectId": this.projectId,
@@ -431,7 +431,7 @@ class BigQueryUtil {
         };
 
         return this.getBaseNock()
-        .post(`'/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .post(`/bigquery/v2/projects/${this.projectId}/jobs`, body)
         .reply(200, response);
     }
 
@@ -441,7 +441,7 @@ class BigQueryUtil {
      */
     nockJobCreation(queryStr) {
 
-        const body = {
+        const body = _.matches({
             "configuration": {
                 "query": {
                     "useLegacySql": false,
@@ -454,10 +454,9 @@ class BigQueryUtil {
                 }
             },
             "jobReference": {
-                "projectId": this.projectId,
-                "jobId": JOB_ID
+                "projectId": this.projectId
             }
-        };
+        });
 
         const response = {
             "kind": "bigquery#job",
@@ -498,7 +497,7 @@ class BigQueryUtil {
         };
 
         return this.getBaseNock()
-        .post(`'/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .post(`/bigquery/v2/projects/${this.projectId}/jobs`, body)
         .reply(200, response);
     }
 
@@ -507,10 +506,6 @@ class BigQueryUtil {
      * @return {nock.Scope}
      */
     nockJobMetadata(queryStr) {
-
-        const query = {
-            "location": "US"
-        };
 
         const response = {
             "kind": "bigquery#job",
@@ -556,8 +551,12 @@ class BigQueryUtil {
         };
 
         return this.getBaseNock()
+        .filteringPath(path => {
+            const split = path.split('/');
+            split.pop();
+            return split.join('/') + '/' + JOB_ID;
+        })
         .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
-        .query(query)
         .reply(200, response);
     }
 
@@ -585,7 +584,7 @@ class BigQueryUtil {
             "totalBytesProcessed": "67742205",
             "jobComplete": true,
             "cacheHit": false,
-            "totalRows": "1",
+            "totalRows": rows.length,
             "rows": [
                 {
                     "f": [

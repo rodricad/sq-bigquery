@@ -151,7 +151,7 @@ class BigQueryJob {
             const [rows] = await job.getQueryResults({ autoPaginate: true });
             this.logger.info('bigquery-job.js Got query results. name:%s costThresholdInGB:%s cacheHit:%s totalRows:%s elapsed:%s ms. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, rows.length, elapsed.end(), cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
-            return rows;
+            // return rows;
         }
         catch(err) {
             BigQueryError.parseErrorAndThrow(err);

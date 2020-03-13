@@ -199,7 +199,7 @@ describe('BigQueryJob Test', function () {
         });
     });
 
-    describe('4. validate()', () => {
+    describe.only('4. run()', () => {
 
         let authScope = null;
         let bigQueryUtil = null;
@@ -225,13 +225,24 @@ describe('BigQueryJob Test', function () {
             BigQueryHelper.clearInstance();
         });
 
-        it('1.', async () => {
+        it('1. Create BigQueryJob and make run(). Expect to validate first and the return rows', async () => {
 
-            const opts = _getOptions();
+            const opts = _getOptionsComplete();
             const bigQueryJob = new BigQueryJob(opts);
 
             await bigQueryJob.init();
-            await bigQueryJob.validate();
+
+            const queryStr = bigQueryJob.getQuerySQL();
+
+            const jobValidationScope = bigQueryUtil.nockJobValidation(queryStr);
+            const jobCreationScope = bigQueryUtil.nockJobCreation(queryStr);
+            const jobMetadataScope = bigQueryUtil.nockJobMetadata(queryStr);
+
+            await bigQueryJob.run();
+
+            jobValidationScope.done();
+            jobCreationScope.done();
+            jobMetadataScope.done();
         });
     });
 
@@ -248,6 +259,18 @@ describe('BigQueryJob Test', function () {
             bigQuery: null,
             logger: null,
             ...opts
+        };
+    }
+
+    /**
+     * @param {Object=} opts
+     * @return {Object}
+     * @private
+     */
+    function _getOptionsComplete(opts= {}) {
+        return {
+            ..._getOptions(),
+            sqlFilename: path.resolve(__dirname, './data/dummy-query-complete.sql')
         };
     }
 });

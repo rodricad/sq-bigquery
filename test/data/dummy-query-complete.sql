@@ -1,0 +1,1 @@
+SELECT some_field, other_field FROM `${dataset}.${table}`
