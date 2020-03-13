@@ -122,10 +122,10 @@ class BigQueryJob {
             const cost = _getCost(job.metadata.statistics.totalBytesProcessed, this.costPerTB);
 
             if (cost.gb >= this.costThresholdInGB) {
-                this.logger.notify('BigQuery Job | Expensive Query').steps(0,1).msg('bigquery-job.js Expensive query over threshold. name:%s costThresholdInGB:%s. Estimated cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes)
+                this.logger.notify('BigQuery Job | Expensive Query').steps(0,1).msg('bigquery-job.js Expensive query over threshold. name:%s costThresholdInGB:%s. Estimated cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, this.costThresholdInGB, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes)
             }
             else {
-                this.logger.info('bigquery-job.js Validated job. name:%s. Estimated cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes)
+                this.logger.info('bigquery-job.js Validated job. name:%s. Estimated cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes)
             }
         }
         catch(err) {
@@ -153,7 +153,7 @@ class BigQueryJob {
             const [metadata] = await job.getMetadata();
             const cacheHit = metadata.statistics.query.cacheHit;
             const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
-            this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s KB | %s MB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+            this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
 
             return rows;
         }
