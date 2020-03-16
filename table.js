@@ -3,10 +3,11 @@
 let _ = require('lodash');
 let uuid = require('uuid');
 let Exception = require('sq-toolkit/exception');
-let BufferQueue = require('sq-toolkit/buffer-queue');
+let BufferQueue = require('./lib/bq-buffer-queue');
 let BigQuery = require('@google-cloud/bigquery').BigQuery;
 
 let BigQueryError = require('./error');
+const Error = require('./lib/constants/error');
 
 const BigQueryTableConst = require('./lib/constants/table');
 
@@ -21,6 +22,7 @@ class BigQueryTable {
      * @param {Boolean=}       opts.bufferEnabled
      * @param {Number=}        opts.bufferMaxItems
      * @param {Number=}        opts.bufferMaxTime
+     * @param {Boolean=}       opts.bufferItemPromises
      */
     constructor(table, opts) {
         this.name           = table.id;
@@ -33,6 +35,7 @@ class BigQueryTable {
         this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
         this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
         this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
+        this.bufferItemPromises = _.get(opts, 'bufferItemPromises', false);
 
         this.bufferQueue = null;
         this._init();
@@ -56,7 +59,7 @@ class BigQueryTable {
 
             maxItems: this.bufferMaxItems,
             maxTime: this.bufferMaxTime,
-            itemPromises: false
+            itemPromises: this.bufferItemPromises
         };
 
         this.bufferQueue = new BufferQueue(opts);
@@ -70,37 +73,48 @@ class BigQueryTable {
     }
 
     /**
-     * @param {Object|Object[]} rows
-     * @return {Promise|null}
+     * @return {Boolean}
      */
-    insert(rows) {
-        if (this.isBufferEnabled() === false) {
-            return this._insert(rows);
-        }
-
-        if (Array.isArray(rows) === true) {
-            return this.bufferQueue.addMany(rows);
-        }
-
-        return this.bufferQueue.add(rows);
+    isBufferItemPromisesEnabled() {
+        return this.bufferItemPromises === true;
     }
 
     /**
-     * @param {Object|Object[]} rows
+     * @param {Object|Object[]} data
+     * @return {Promise|null}
+     */
+    insert(data) {
+        if (this.isBufferEnabled() === false) {
+            data = Array.isArray(data) === false ? [data] : data;
+            return this._insert(data);
+        }
+        if (Array.isArray(data) === true) {
+            if(this.isBufferItemPromisesEnabled() === true) {
+                throw new Exception(Error.ERROR_ADD_MANY_NOT_SUPPORTED, 'Can\'t insert multiple rows at once when bufferItemPromises is enabled.')
+            }
+            return this.bufferQueue.addMany(data);
+        }
+        return this.bufferQueue.add(data);
+    }
+
+    /**
+     * @param {Object|Object[]} items
      * @return {Promise.<Object>}
      * @private
      */
-    _insert(rows) {
-        let items   = BigQueryTable.getRawRows(rows);
+    _insert(items) {
         let options = {
             raw: true
         };
-
         return this.table.insert(items, options)
         .catch(BigQueryError.parseErrorAndThrow)
         .then(data => {
             return data[0];
         });
+    }
+
+    static getInsertId() {
+        return uuid.v4();
     }
 
     /**
@@ -111,16 +125,15 @@ class BigQueryTable {
         let items = Array.isArray(rows) === false ? [rows] : rows;
 
         return items.map(item => {
-            return { insertId: BigQueryTable.getInsertId(), json: item };
+            return BigQueryTable.getRawRow(item);
         });
     }
 
-    /**
-     * @return {String}
-     */
-    /* istanbul ignore next */
-    static getInsertId() {
-        return uuid.v4();
+    static getRawRow(row, insertId) {
+        if(insertId == null) {
+            insertId = BigQueryTable.getInsertId();
+        }
+        return { insertId: insertId, json: row };
     }
 
     /**
@@ -137,7 +150,7 @@ class BigQueryTable {
             let type = pair[1];
 
             if (BigQueryTableConst.Schema.Type[type] == null) {
-                throw new Exception(BigQueryTableConst.ErrorCode.INVALID_SCHEMA_TYPE);
+                throw new Exception(Error.INVALID_SCHEMA_TYPE);
             }
 
             fields.push({ name: key, type: type, mode: BigQueryTableConst.Schema.Mode.NULLABLE });
@@ -147,7 +160,7 @@ class BigQueryTable {
     }
 }
 
-BigQueryTable.ErrorCode = BigQueryTableConst.ErrorCode;
+BigQueryTable.ErrorCode = Error;
 BigQueryTable.Schema    = BigQueryTableConst.Schema;
 
 module.exports = BigQueryTable;

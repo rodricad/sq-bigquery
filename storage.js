@@ -4,8 +4,10 @@ let _ = require('lodash');
 let Exception = require('sq-toolkit/exception');
 
 let BigQueryDataset = require('./dataset');
+let BigQueryTable = require('./table');
 
 const BigQueryTableConst = require('./lib/constants/table');
+const Error = require('./lib/constants/error');
 
 class BigQueryStorage {
 
@@ -26,6 +28,7 @@ class BigQueryStorage {
      * @property {Boolean|undefined}       bufferEnabled
      * @property {Number|undefined}        bufferMaxItems
      * @property {Number|undefined}        bufferMaxTime
+     * @property {Boolean|undefined}        bufferItemPromises
      */
 
     /**
@@ -47,6 +50,7 @@ class BigQueryStorage {
         this.bufferEnabled  = _.get(opts, 'bufferEnabled', false);
         this.bufferMaxItems = _.get(opts, 'bufferMaxItems', null);
         this.bufferMaxTime  = _.get(opts, 'bufferMaxTime', null);
+        this.bufferItemPromises  = _.get(opts, 'bufferItemPromises', null);
 
         this.dataset = null;
         this.table   = null;
@@ -72,7 +76,8 @@ class BigQueryStorage {
 
             bufferEnabled: this.bufferEnabled,
             bufferMaxItems: this.bufferMaxItems,
-            bufferMaxTime: this.bufferMaxTime
+            bufferMaxTime: this.bufferMaxTime,
+            bufferItemPromises: this.bufferItemPromises
         };
 
         this.dataset = BigQueryDataset.getDataset(this.datasetName, opts);
@@ -99,12 +104,18 @@ class BigQueryStorage {
      * @return {Promise|null}
      */
     insert(rows) {
-        let data = Array.isArray(rows) === true ? rows.map(this.getInsertData) : this.getInsertData(rows);
+        let data = Array.isArray(rows) === true ? rows.map(this.mapRow) : this.mapRow(rows);
         return this.table.insert(data);
+    }
+
+    mapRow(row) {
+        let insertData = this.getInsertData(row);
+        let insertId = row._insertId;
+        return BigQueryTable.getRawRow(insertData, insertId);
     }
 }
 
 BigQueryStorage.Schema    = BigQueryTableConst.Schema;
-BigQueryStorage.ErrorCode = BigQueryTableConst.ErrorCode;
+BigQueryStorage.ErrorCode = Error;
 
 module.exports = BigQueryStorage;

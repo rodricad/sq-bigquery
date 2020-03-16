@@ -310,9 +310,10 @@ class BigQueryUtil {
     /**
      * @param {String} tableName
      * @param {Object} rows
+     * @param {Number=0} delayMs
      * @return {nock.Scope}
      */
-    nockInsert(tableName, rows) {
+    nockInsert(tableName, rows, delayMs=0) {
 
         let items = BigQueryUtil.parseInsertRows(rows);
         let body  = { rows: items };
@@ -321,6 +322,7 @@ class BigQueryUtil {
 
         return this.getBaseNock()
         .post(`/bigquery/v2/projects/${this.projectId}/datasets/${this.datasetName}/tables/${tableName}/insertAll`, body)
+        .delay(delayMs)
         .reply(200, response, this.getResponseHeaders());
     }
 
@@ -635,11 +637,7 @@ class BigQueryUtil {
      * @return {Object[]}
      */
     static parseInsertRows(rows) {
-        let items = Array.isArray(rows) === true ? rows : [rows];
-
-        return items.map(item => {
-            return { insertId: BigQueryUtil.getDummyInsertId(), json: item };
-        });
+        return Array.isArray(rows) === true ? rows : [rows];
     }
 
     /**
