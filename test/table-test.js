@@ -134,11 +134,11 @@ describe('BigQueryTable Test', function () {
             });
         });
 
-        it('2. Insert a multiple objects with buffer enabled and maxItems = 5. Expect all items to be inserted in bulk and no promise returned', function () {
+        it('2. Insert multiple objects with buffer enabled and maxItems = 5. Expect all items to be inserted in bulk and no promise returned', function () {
 
             let notify = NotifyUtil.getNotify(BufferQueue);
 
-            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5});
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5 });
             let items = _getItemSet(5);
 
             bigQueryUtil.patchInsertId();
@@ -179,10 +179,10 @@ describe('BigQueryTable Test', function () {
 
                 let logger = table.logger;
 
-                expect(logger.notifier.values.key).to.equals('TableExists | BufferQueue Error');
+                expect(logger.notifier.values.key).to.equals('TableExists | BqBufferQueue Error');
                 expect(logger.notifier.values.start).to.equals(10);
                 expect(logger.notifier.values.each).to.equals(100);
-                expect(logger.notifier.values.msg).to.equals('buffer-queue.js:: Error at %s Buffer. Error: ');
+                expect(logger.notifier.values.msg).to.equals('bq-buffer-queue.js:: Error at %s Buffer. Error: ');
             })
             .finally(() => {
                 NotifyUtil.restore(notify);
@@ -336,7 +336,8 @@ describe('BigQueryTable Test', function () {
             logger: new DummyLogger(),
             bufferEnabled: false,
             bufferMaxItems: null,
-            bufferMaxTime: null
+            bufferMaxTime: null,
+            bufferItemPromises: false
         };
         if (opts != null) {
             _.assignIn(options, opts);

@@ -637,11 +637,7 @@ class BigQueryUtil {
      * @return {Object[]}
      */
     static parseInsertRows(rows) {
-        let items = Array.isArray(rows) === true ? rows : [rows];
-
-        return items.map(item => {
-            return { insertId: BigQueryUtil.getDummyInsertId(), json: item };
-        });
+        return Array.isArray(rows) === true ? rows : [rows];
     }
 
     /**
