@@ -32,7 +32,7 @@ describe('BigQueryTable Test', function () {
     });
 
     after(() => {
-        expect(authScope.isDone()).to.equals(true);
+        authScope.done();
         bigQueryUtil.cleanAll();
     });
 
@@ -98,13 +98,15 @@ describe('BigQueryTable Test', function () {
 
     describe('2. insert()', function () {
 
-        it('1. Insert a single object with buffer disabled. Expect to be inserted immediately', function () {
+        it('1. Inert a single object with buffer disabled. Expect to be inserted immediately', function () {
 
             let table = _getTable({ bufferEnabled: false });
 
             bigQueryUtil.patchInsertId();
 
             let item = _getItemSet(1)[0];
+
+            bigQueryUtil.patchInsertId();
 
             let scope = bigQueryUtil.nockInsert(table.name, item);
             let insertSpy = sinon.spy(table.table, 'insert');
@@ -177,10 +179,10 @@ describe('BigQueryTable Test', function () {
 
                 let logger = table.logger;
 
-                expect(logger.notifier.values.key).to.equals('TableExists | BqBufferQueue Error');
+                expect(logger.notifier.values.key).to.equals('TableExists | BufferQueue Error');
                 expect(logger.notifier.values.start).to.equals(10);
                 expect(logger.notifier.values.each).to.equals(100);
-                expect(logger.notifier.values.msg).to.equals('bq-buffer-queue.js:: Error at %s Buffer. Error: ');
+                expect(logger.notifier.values.msg).to.equals('buffer-queue.js:: Error at %s Buffer. Error: ');
             })
             .finally(() => {
                 NotifyUtil.restore(notify);
@@ -295,8 +297,7 @@ describe('BigQueryTable Test', function () {
     /**
      * @param {Object=}  opts
      * @param {Boolean=} opts.bufferEnabled
-     * @param {Number=} opts.bufferMaxItems
-     * @param {Boolean=} opts.bufferItemPromises
+     * @param {Boolean=} opts.bufferMaxItems
      * @return {BigQueryTable}
      * @private
      */
@@ -335,8 +336,7 @@ describe('BigQueryTable Test', function () {
             logger: new DummyLogger(),
             bufferEnabled: false,
             bufferMaxItems: null,
-            bufferMaxTime: null,
-            bufferItemPromises: false
+            bufferMaxTime: null
         };
         if (opts != null) {
             _.assignIn(options, opts);

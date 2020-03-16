@@ -1,9 +1,14 @@
 'use strict';
 
-let nock = require('nock');
-let sinon = require('sinon');
+const nock = require('nock');
+const sinon = require('sinon');
+const _ = require('lodash');
+const { expect } = require('chai');
 
-let BigQueryTable = require('./table');
+const BigQueryTable = require('./table');
+const BigQueryJob = require('./job');
+
+const JOB_ID = '628a5936-4b64-413a-91e7-7d3582955fdd';
 
 class BigQueryUtil {
 
@@ -353,6 +358,264 @@ class BigQueryUtil {
         .reply(200, response, this.getResponseHeaders());
     }
 
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobValidation(queryStr) {
+
+        const body = _.matches({
+            "configuration": {
+                "dryRun": true,
+                "query": {
+                    "useLegacySql": false,
+                    "query": queryStr,
+                    "destination": null,
+                    "location": null,
+                    "jobId": null,
+                    "jobPrefix": null
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId
+            }
+        });
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "OTRU1XB1jvTJ0DUEQl8lCg==",
+            "id": `${this.projectId}:US.`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "dryRun": true,
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "location": "US"
+            },
+            "status": {
+                "state": "DONE"
+            },
+            "statistics": {
+                "creationTime": "1584049237112",
+                "totalBytesProcessed": "67742205",
+                "query": {
+                    "totalBytesProcessed": "67742205",
+                    "totalBytesBilled": "0",
+                    "cacheHit": false,
+                    "referencedTables": [
+                        {
+                            "projectId": this.projectId,
+                            "datasetId": this.datasetName,
+                            "tableId": 'REFERENCED_TABLE_PLACEHOLDER'
+                        }
+                    ],
+                    "schema": {
+                        // ATTENTION: PLACEHOLDER
+                    },
+                    "statementType": "SELECT",
+                    "totalBytesProcessedAccuracy": "PRECISE"
+                }
+            }
+        };
+
+        return this.getBaseNock()
+        .post(`/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobCreation(queryStr) {
+
+        const body = _.matches({
+            "configuration": {
+                "query": {
+                    "useLegacySql": false,
+                    "dryRun": false,
+                    "query": queryStr,
+                    "destination": null,
+                    "location": null,
+                    "jobId": null,
+                    "jobPrefix": null
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId
+            }
+        });
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "hXrqmor4rPFAQMb2iUjldQ==",
+            "id": `${this.projectId}:US.${JOB_ID}`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID,
+                "location": "US"
+            },
+            "statistics": {
+                "creationTime": "1584049237824",
+                "startTime": "1584049237943",
+                "query": {
+                    "statementType": "SELECT"
+                }
+            },
+            "status": {
+                "state": "RUNNING"
+            }
+        };
+
+        return this.getBaseNock()
+        .post(`/bigquery/v2/projects/${this.projectId}/jobs`, body)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {String} queryStr
+     * @return {nock.Scope}
+     */
+    nockJobMetadata(queryStr) {
+
+        const response = {
+            "kind": "bigquery#job",
+            "etag": "oc0uFHxbW45VMWjAhlMQzw==",
+            "id": `${this.projectId}:US.${JOB_ID}`,
+            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
+            "user_email": "example@example.com",
+            "configuration": {
+                "jobType": "QUERY",
+                "query": {
+                    "query": queryStr,
+                    "destinationTable": {
+                        "projectId": this.projectId,
+                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+                    },
+                    "createDisposition": "CREATE_IF_NEEDED",
+                    "writeDisposition": "WRITE_TRUNCATE",
+                    "priority": "INTERACTIVE",
+                    "useLegacySql": false
+                }
+            },
+            "jobReference": {
+                "projectId": this.projectId,
+                "jobId": JOB_ID,
+                "location": "US"
+            },
+            "statistics": {
+                "creationTime": "1584049237824",
+                "startTime": "1584049237943",
+                "endTime": "1584049238136",
+                "totalBytesProcessed": "67742205",
+                "query": {
+                    "totalBytesProcessed": "67742205",
+                    "totalBytesBilled": "67742205",
+                    "cacheHit": false,
+                    "statementType": "SELECT"
+                }
+            },
+            "status": {
+                "state": "DONE"
+            }
+        };
+
+        return this.getBaseNock()
+        .filteringPath(path => {
+            const split = path.split('/');
+            split.pop();
+            return split.join('/') + '/' + JOB_ID;
+        })
+        .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
+        .reply(200, response);
+    }
+
+    /**
+     * @param {Array} rows
+     */
+    stubJobQueryResults(rows) {
+        return sinon.stub(BigQueryJob.prototype, '_getQueryResults').resolves([rows]);
+    }
+
+    /**
+     * @typedef {Object} NockJobResponse
+     * @property {nock.Scope} jobValidationScope
+     * @property {nock.Scope} jobCreationScope
+     * @property {nock.Scope} jobMetadataScope
+     * @property jobQueryResultsStub
+     * @property {Function} done
+     */
+
+    /**
+     * @param {String} queryStr
+     * @param {Object[]} rows
+     * @return {NockJobResponse}
+     */
+    nockJob(queryStr, rows) {
+        const jobValidationScope = this.nockJobValidation(queryStr);
+        const jobCreationScope = this.nockJobCreation(queryStr);
+        const jobMetadataScope = this.nockJobMetadata(queryStr);
+        const jobQueryResultsStub = this.stubJobQueryResults(rows);
+
+        return {
+            jobValidationScope,
+            jobCreationScope,
+            jobMetadataScope,
+            jobQueryResultsStub,
+            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub)
+        }
+    }
+
+    /**
+     * @param {nock.Scope} jobValidationScope
+     * @param {nock.Scope} jobCreationScope
+     * @param {nock.Scope} jobMetadataScope
+     * @param jobQueryResultsStub
+     */
+    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub) {
+        jobValidationScope.done();
+        jobCreationScope.done();
+        jobMetadataScope.done();
+
+        expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
+        const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
+        expect(jobId).to.equals(JOB_ID, 'Job should match test jobId at getQueryResults');
+        jobQueryResultsStub.restore();
+    }
+
     patchInsertId() {
         if (this.stubInsertId != null) {
             return;
@@ -374,7 +637,11 @@ class BigQueryUtil {
      * @return {Object[]}
      */
     static parseInsertRows(rows) {
-        return Array.isArray(rows) === true ? rows : [rows];
+        let items = Array.isArray(rows) === true ? rows : [rows];
+
+        return items.map(item => {
+            return { insertId: BigQueryUtil.getDummyInsertId(), json: item };
+        });
     }
 
     /**

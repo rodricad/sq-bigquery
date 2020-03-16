@@ -2,7 +2,9 @@
 
 describe('BigQueryDataset Test', function () {
 
+    let Promise = require('bluebird');
     let path    = require('path');
+    let nock    = require('nock');
     let _       = require('lodash');
     let chai    = require('chai');
     let expect  = chai.expect;
@@ -23,7 +25,7 @@ describe('BigQueryDataset Test', function () {
     });
 
     after(() => {
-        expect(authScope.isDone()).to.equals(true);
+        authScope.done();
         bigQueryUtil.cleanAll();
     });
 

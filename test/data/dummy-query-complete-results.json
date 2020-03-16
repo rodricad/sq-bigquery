@@ -1,0 +1,14 @@
+[
+  {
+    "some_field": 1,
+    "other_field": 1
+  },
+  {
+    "some_field": 2,
+    "other_field": 2
+  },
+  {
+    "some_field": 3,
+    "other_field": 3
+  }
+]
