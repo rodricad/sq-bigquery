@@ -62,7 +62,7 @@ class BigQueryFactory {
         if (opts.clientEmail != null && opts.privateKey != null) {
             options.credentials = {
                 client_email: opts.clientEmail,
-                private_key: opts.privateKey
+                private_key: BigQueryFactory.fixPrivateKey(opts.privateKey)
             };
         }
         else if (opts.keyFilename != null) {
@@ -81,6 +81,16 @@ class BigQueryFactory {
         }
 
         return bigquery;
+    }
+
+    /* istanbul ignore next */
+    /**
+     * Fixes ECS limitation to pass multi-line env vars through task definition config
+     * @param {String} privateKey
+     * @return {String}
+     */
+    static fixPrivateKey(privateKey) {
+        return privateKey.split('\\n').join('\n');
     }
 }
 
