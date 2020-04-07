@@ -584,7 +584,7 @@ class BigQueryUtil {
      * @param {Object[]} rows
      * @return {NockJobResponse}
      */
-    nockJob(queryStr, rows) {
+    nockJob(queryStr, rows, expectQueryResultToBeCalled = true) {
         const jobValidationScope = this.nockJobValidation(queryStr);
         const jobCreationScope = this.nockJobCreation(queryStr);
         const jobMetadataScope = this.nockJobMetadata(queryStr);
@@ -595,7 +595,7 @@ class BigQueryUtil {
             jobCreationScope,
             jobMetadataScope,
             jobQueryResultsStub,
-            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub)
+            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, expectQueryResultToBeCalled)
         }
     }
 
@@ -605,15 +605,19 @@ class BigQueryUtil {
      * @param {nock.Scope} jobMetadataScope
      * @param jobQueryResultsStub
      */
-    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub) {
+    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, expectQueryResultToBeCalled) {
         jobValidationScope.done();
         jobCreationScope.done();
         jobMetadataScope.done();
 
-        expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
-        const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
-        expect(jobId).to.equals(JOB_ID, 'Job should match test jobId at getQueryResults');
-        jobQueryResultsStub.restore();
+        if(expectQueryResultToBeCalled){
+            expect(jobQueryResultsStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
+            const jobId = _.get(jobQueryResultsStub.args, '[0][0].metadata.jobReference.jobId', null);
+            expect(jobId).to.equals(JOB_ID, 'Job should match test jobId at getQueryResults');
+            jobQueryResultsStub.restore();
+        } else {
+            expect(jobQueryResultsStub.called).to.equals(false, 'getQueryResults should not be called');
+        }
     }
 
     patchInsertId() {

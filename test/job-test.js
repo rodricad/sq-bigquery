@@ -68,12 +68,18 @@ describe('BigQueryJob Test', function () {
             const bigQuery = BigQueryFactory.create({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
             const logger = new DummyLogger();
 
-            const opts = _getOptions({ logger, bigQuery, costThresholdInGB: 10 });
+            const destinationTableConfig = {
+                dataset: 'DATESET_NAME',
+                table: 'TABLE_NAME'
+            };
+            const writeDisposition = 'WRITE_APPEND';
+            const opts = _getOptions({ logger, bigQuery, costThresholdInGB: 10, destinationTableConfig, writeDisposition });
             const bigQueryJob = new BigQueryJob(opts);
 
             expect(bigQueryJob.name).to.equals('TestQuery');
             expect(bigQueryJob.sqlFilename).to.contains('/test/data/dummy-query.sql');
             expect(bigQueryJob.costThresholdInGB).to.equals(10);
+            expect(bigQueryJob.writeDisposition).to.equals('WRITE_APPEND');
             expect(bigQueryJob.bigQuery).to.equals(bigQuery);
             expect(bigQueryJob.sqlStr).to.equals(null);
             expect(bigQueryJob.sqlTemplate).to.equals(null);
@@ -84,6 +90,8 @@ describe('BigQueryJob Test', function () {
 
             expect(bigQueryJob.isInitialized()).to.equals(true);
             expect(bigQueryJob.bigQuery).to.equals(bigQuery);
+            expect(bigQueryJob.destinationTable.id).to.eql(destinationTableConfig.table);
+            expect(bigQueryJob.destinationTable.parent.id).to.eql(destinationTableConfig.dataset);
             expect(bigQueryJob.sqlStr).to.equals('SELECT some_field, other_field FROM `${dataset}.${table}`');
             assert.isFunction(bigQueryJob.sqlTemplate, 'sqlTemplate should be a function');
         });
@@ -228,7 +236,6 @@ describe('BigQueryJob Test', function () {
                 dryRun: false,
                 useLegacySql: true,
                 query: 'SELECT * FROM some_table',
-                destination: 'VALUE',
                 location: 'VALUE',
                 jobId: 'VALUE',
                 jobPrefix: 'VALUE'
@@ -287,6 +294,22 @@ describe('BigQueryJob Test', function () {
 
             expect(results).to.instanceOf(Array);
             expect(results).to.length(3);
+        });
+
+        it('2. run() must not return rows if avoidReturningResults is passed on construction', async () => {
+            const opts = Object.assign(_getOptionsComplete(), {avoidReturningResults: true});
+            const bigQueryJob = new BigQueryJob(opts);
+
+            await bigQueryJob.init();
+
+            const queryStr = bigQueryJob.getQuerySQL();
+
+            const jobScope = bigQueryUtil.nockJob(queryStr, null, false);
+
+            const results = await bigQueryJob.run();
+
+            jobScope.done();
+            expect(results).to.eql(undefined);
         });
     });
 
