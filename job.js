@@ -24,8 +24,9 @@ const WriteDisposition = {
 
 /**
  * @typedef {Object} TempTableConfig
- * @property {String} dataset
- * @property {String} table
+ * @property {String} datasetName
+ * @property {String} tableName
+ * @property {WriteDisposition=} writeDisposition
  */
 
 class BigQueryJob {
@@ -36,9 +37,8 @@ class BigQueryJob {
      * @param {String}    opts.sqlFilename
      * @param {Number=}   [opts.costThresholdInGB = 100]
      * @param {Number=}   [opts.costPerTB = 5]
-     * @param {Boolean=false}   opts.avoidReturningResults
+     * @param {Boolean=true}   opts.shouldQueryResults
      * @param {TempTableConfig=}   opts.destinationTableConfig
-     * @param {WriteDisposition=}   opts.writeDisposition
      *
      * @param {BigQuery=} opts.bigQuery
      * @param {WinstonLogger|DummyLogger=} opts.logger
@@ -50,8 +50,7 @@ class BigQueryJob {
         this.costPerTB = opts.costPerTB != null ? opts.costPerTB : COST_PER_TB;
 
         this.destinationTableConfig = opts.destinationTableConfig;
-        this.writeDisposition = opts.writeDisposition;
-        this.avoidReturningResults = opts.avoidReturningResults || false;
+        this.shouldQueryResults = opts.shouldQueryResults != null ? opts.shouldQueryResults : true;
 
         this.bigQuery = opts.bigQuery || null ;
         this.logger = opts.logger || new DummyLogger();
@@ -77,14 +76,23 @@ class BigQueryJob {
         }
         this.bigQuery = this.bigQuery || BigQueryFactory.getInstance();
         if(this.destinationTableConfig != null){
-            let destinationDataset = this.bigQuery.dataset(this.destinationTableConfig.dataset);
-            this.destinationTable = destinationDataset.table(this.destinationTableConfig.table);
+            let destinationDataset = this.bigQuery.dataset(this.destinationTableConfig.datasetName);
+            this.destinationTable = destinationDataset.table(this.destinationTableConfig.tableName);
         }
-        this.destinationTable = this.destinationTable || null;
         this.sqlStr = await fs.readFile(this.sqlFilename, 'utf8');
         this.sqlTemplate = template(this.sqlStr);
         this._initialized = true;
         return this;
+    }
+
+    getDestinationTableAndWriteDispostion(){
+        let ret = {};
+        ret.destination = this.destinationTable || null;
+        let writeDisposition = this.destinationTableConfig && this.destinationTableConfig.writeDisposition;
+        if(writeDisposition != null){
+            ret.writeDisposition = writeDisposition;
+        }
+        return ret;
     }
 
     /**
@@ -120,12 +128,12 @@ class BigQueryJob {
      * @return {Object}
      */
     getQueryOptions(opts) {
-        let options = {
+        return {
             // This params CAN be overridden
             dryRun: false,
             useLegacySql: false,
             query: this.getQuerySQL(),
-            destination: this.destinationTable,  // With destination = null, BigQuery will generate a temporal table that lives for 24 hs
+            ...this.getDestinationTableAndWriteDispostion(),
             ...opts,
 
             // This params CAN'T be overridden
@@ -133,10 +141,6 @@ class BigQueryJob {
             jobId: null,        // BigQuery will generate the jobId randomly
             jobPrefix: null
         };
-        if(this.writeDisposition){
-            options.writeDisposition = this.writeDisposition;
-        }
-        return options;
     }
 
     /**
@@ -180,9 +184,12 @@ class BigQueryJob {
 
             let rows;
 
-            if(this.avoidReturningResults !== true){
+            let destinationMsg = this._getDestinationLogMsg();
+            if(this.shouldQueryResults){
                 [rows] = await this._getQueryResults(job);
-                this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms', this.name, rows.length, elapsed.end());
+                this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms%s', this.name, rows.length, elapsed.end(), destinationMsg);
+            } else {
+                this.logger.info('bigquery-job.js Query results won\'t be returned due to shouldQueryResults:false. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
             }
 
             const [metadata] = await job.getMetadata();
@@ -195,6 +202,19 @@ class BigQueryJob {
         catch(err) {
             BigQueryError.parseErrorAndThrow(err);
         }
+    }
+
+    _getDestinationLogMsg() {
+        let destinationInfo = this.getDestinationTableAndWriteDispostion();
+        let destinationMsg = '';
+        let destinationTable = destinationInfo.destination;
+        if (destinationInfo.destination != null) {
+            destinationMsg = ` destination:${destinationTable.parent.id}.${destinationTable.id}`;
+        }
+        if (destinationInfo.writeDisposition) {
+            destinationMsg += ` writeDisposition:${destinationInfo.writeDisposition}`;
+        }
+        return destinationMsg;
     }
 
     /**
@@ -229,5 +249,7 @@ function _getCost(bytes, costPerTB) {
         price: price.toFixed(4)
     };
 }
+
+BigQueryJob.WriteDisposition = WriteDisposition;
 
 module.exports = BigQueryJob;

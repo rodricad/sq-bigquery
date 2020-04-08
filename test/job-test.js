@@ -68,18 +68,18 @@ describe('BigQueryJob Test', function () {
             const bigQuery = BigQueryFactory.create({ projectId: PROJECT_ID, privateKey: privateKeyFilename });
             const logger = new DummyLogger();
 
-            const destinationTableConfig = {
-                dataset: 'DATESET_NAME',
-                table: 'TABLE_NAME'
-            };
             const writeDisposition = 'WRITE_APPEND';
-            const opts = _getOptions({ logger, bigQuery, costThresholdInGB: 10, destinationTableConfig, writeDisposition });
+            const destinationTableConfig = {
+                datasetName: 'DATESET_NAME',
+                tableName: 'TABLE_NAME',
+                writeDisposition: writeDisposition
+            };
+            const opts = _getOptions({ logger, bigQuery, costThresholdInGB: 10, destinationTableConfig });
             const bigQueryJob = new BigQueryJob(opts);
 
             expect(bigQueryJob.name).to.equals('TestQuery');
             expect(bigQueryJob.sqlFilename).to.contains('/test/data/dummy-query.sql');
             expect(bigQueryJob.costThresholdInGB).to.equals(10);
-            expect(bigQueryJob.writeDisposition).to.equals('WRITE_APPEND');
             expect(bigQueryJob.bigQuery).to.equals(bigQuery);
             expect(bigQueryJob.sqlStr).to.equals(null);
             expect(bigQueryJob.sqlTemplate).to.equals(null);
@@ -90,8 +90,10 @@ describe('BigQueryJob Test', function () {
 
             expect(bigQueryJob.isInitialized()).to.equals(true);
             expect(bigQueryJob.bigQuery).to.equals(bigQuery);
-            expect(bigQueryJob.destinationTable.id).to.eql(destinationTableConfig.table);
-            expect(bigQueryJob.destinationTable.parent.id).to.eql(destinationTableConfig.dataset);
+            let destinationInfo = bigQueryJob.getDestinationTableAndWriteDispostion();
+            expect(destinationInfo.destination.id).to.eql(destinationTableConfig.tableName);
+            expect(destinationInfo.destination.parent.id).to.eql(destinationTableConfig.datasetName);
+            expect(destinationInfo.writeDisposition).to.eql(writeDisposition);
             expect(bigQueryJob.sqlStr).to.equals('SELECT some_field, other_field FROM `${dataset}.${table}`');
             assert.isFunction(bigQueryJob.sqlTemplate, 'sqlTemplate should be a function');
         });
@@ -297,14 +299,23 @@ describe('BigQueryJob Test', function () {
         });
 
         it('2. run() must not return rows if avoidReturningResults is passed on construction', async () => {
-            const opts = Object.assign(_getOptionsComplete(), {avoidReturningResults: true});
+            const destinationTableConfig = {
+                datasetName: 'DATASET',
+                tableName: 'TABLE',
+                writeDisposition: 'WRITE_APPEND'
+            };
+            const moreOptions = {
+                shouldQueryResults: false,
+                destinationTableConfig: destinationTableConfig
+            };
+            const opts = Object.assign(_getOptionsComplete(), moreOptions);
             const bigQueryJob = new BigQueryJob(opts);
 
             await bigQueryJob.init();
 
             const queryStr = bigQueryJob.getQuerySQL();
 
-            const jobScope = bigQueryUtil.nockJob(queryStr, null, false);
+            const jobScope = bigQueryUtil.nockJob(queryStr, null, {destinationTableConfig: destinationTableConfig, expectQueryResultToBeCalled: false});
 
             const results = await bigQueryJob.run();
 

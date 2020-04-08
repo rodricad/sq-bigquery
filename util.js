@@ -360,17 +360,17 @@ class BigQueryUtil {
 
     /**
      * @param {String} queryStr
+     * @param {Object} options
      * @return {nock.Scope}
      */
-    nockJobValidation(queryStr) {
-
+    nockJobValidation(queryStr, options) {
         const body = _.matches({
             "configuration": {
                 "dryRun": true,
                 "query": {
                     "useLegacySql": false,
                     "query": queryStr,
-                    "destination": null,
+                    ...options.destination,
                     "location": null,
                     "jobId": null,
                     "jobPrefix": null
@@ -392,13 +392,9 @@ class BigQueryUtil {
                 "jobType": "QUERY",
                 "query": {
                     "query": queryStr,
-                    "destinationTable": {
-                        "projectId": this.projectId,
-                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
-                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
-                    },
+                    "destinationTable":  options.responseDestination,
                     "createDisposition": "CREATE_IF_NEEDED",
-                    "writeDisposition": "WRITE_TRUNCATE",
+                    "writeDisposition": options.destination.writeDisposition != null ? options.destination.writeDisposition : "WRITE_TRUNCATE",
                     "priority": "INTERACTIVE",
                     "useLegacySql": false
                 }
@@ -440,9 +436,10 @@ class BigQueryUtil {
 
     /**
      * @param {String} queryStr
+     * @param {Object} options
      * @return {nock.Scope}
      */
-    nockJobCreation(queryStr) {
+    nockJobCreation(queryStr, options) {
 
         const body = _.matches({
             "configuration": {
@@ -450,7 +447,7 @@ class BigQueryUtil {
                     "useLegacySql": false,
                     "dryRun": false,
                     "query": queryStr,
-                    "destination": null,
+                    ...options.destination,
                     "location": null,
                     "jobId": null,
                     "jobPrefix": null
@@ -471,13 +468,9 @@ class BigQueryUtil {
                 "jobType": "QUERY",
                 "query": {
                     "query": queryStr,
-                    "destinationTable": {
-                        "projectId": this.projectId,
-                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
-                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
-                    },
+                    "destinationTable": options.responseDestination,
                     "createDisposition": "CREATE_IF_NEEDED",
-                    "writeDisposition": "WRITE_TRUNCATE",
+                    "writeDisposition": options.destination.writeDisposition != null ? options.destination.writeDisposition : "WRITE_TRUNCATE",
                     "priority": "INTERACTIVE",
                     "useLegacySql": false
                 }
@@ -506,9 +499,10 @@ class BigQueryUtil {
 
     /**
      * @param {String} queryStr
+     * @param {Object} options
      * @return {nock.Scope}
      */
-    nockJobMetadata(queryStr) {
+    nockJobMetadata(queryStr, options) {
 
         const response = {
             "kind": "bigquery#job",
@@ -520,13 +514,9 @@ class BigQueryUtil {
                 "jobType": "QUERY",
                 "query": {
                     "query": queryStr,
-                    "destinationTable": {
-                        "projectId": this.projectId,
-                        "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
-                        "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
-                    },
+                    "destinationTable": options.responseDestination,
                     "createDisposition": "CREATE_IF_NEEDED",
-                    "writeDisposition": "WRITE_TRUNCATE",
+                    "writeDisposition": options.destination.writeDisposition != null ? options.destination.writeDisposition : "WRITE_TRUNCATE",
                     "priority": "INTERACTIVE",
                     "useLegacySql": false
                 }
@@ -582,12 +572,40 @@ class BigQueryUtil {
     /**
      * @param {String} queryStr
      * @param {Object[]} rows
+     * @param {Object} options
      * @return {NockJobResponse}
      */
-    nockJob(queryStr, rows, expectQueryResultToBeCalled = true) {
-        const jobValidationScope = this.nockJobValidation(queryStr);
-        const jobCreationScope = this.nockJobCreation(queryStr);
-        const jobMetadataScope = this.nockJobMetadata(queryStr);
+    nockJob(queryStr, rows, options = {expectQueryResultToBeCalled: true, destinationTableConfig: null}) {
+        let destination;
+        if(options.destinationTableConfig != null){
+            destination = {
+                destinationTable: {
+                    datasetId: options.destinationTableConfig.datasetName,
+                    tableId: options.destinationTableConfig.tableName,
+                    projectId: this.projectId
+                }
+            }
+        } else {
+            destination = {
+                destination: null
+            }
+        }
+        let writeDisposition = options.destinationTableConfig && options.destinationTableConfig.writeDisposition || null;
+        if(writeDisposition){
+            destination.writeDisposition = writeDisposition;
+        }
+        let defaultResponseDestinationTable =  {
+            "projectId": this.projectId,
+            "datasetId": "TEMPORAL_DATASET_PLACEHOLDER",
+            "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
+        };
+        const jobOptions = {
+            destination: destination,
+            responseDestination: destination.destinationTable != null ? destination.destinationTable : defaultResponseDestinationTable
+        };
+        const jobValidationScope = this.nockJobValidation(queryStr, jobOptions);
+        const jobCreationScope = this.nockJobCreation(queryStr, jobOptions);
+        const jobMetadataScope = this.nockJobMetadata(queryStr, jobOptions);
         const jobQueryResultsStub = this.stubJobQueryResults(rows);
 
         return {
@@ -595,7 +613,7 @@ class BigQueryUtil {
             jobCreationScope,
             jobMetadataScope,
             jobQueryResultsStub,
-            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, expectQueryResultToBeCalled)
+            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, options.expectQueryResultToBeCalled)
         }
     }
 
