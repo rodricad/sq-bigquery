@@ -17,7 +17,7 @@ describe('BigQueryJob Test', function () {
     const BigQueryUtil = require('../util');
     const BigQueryFactory = require('../factory');
     const BigQueryJob = require('../job');
-
+    const Error = require('../lib/constants/error');
     const WinstonLogger = require('sq-logger/winston-logger');
     const logger = new WinstonLogger({ console: { enabled: true } });
 
@@ -298,7 +298,7 @@ describe('BigQueryJob Test', function () {
             expect(results).to.length(3);
         });
 
-        it('2. run() must not return rows if avoidReturningResults is passed on construction', async () => {
+        it('2. run() must not return rows and wait for job completion if avoidReturningResults is passed on construction', async () => {
             const destinationTableConfig = {
                 datasetName: 'DATASET',
                 tableName: 'TABLE',
@@ -315,12 +315,41 @@ describe('BigQueryJob Test', function () {
 
             const queryStr = bigQueryJob.getQuerySQL();
 
-            const jobScope = bigQueryUtil.nockJob(queryStr, null, {destinationTableConfig: destinationTableConfig, expectQueryResultToBeCalled: false});
+            const jobScope = bigQueryUtil.nockJob(queryStr, null, {statuses: ['RUNNING', 'DONE'], destinationTableConfig: destinationTableConfig, expectQueryResultToBeCalled: false});
 
             const results = await bigQueryJob.run();
 
             jobScope.done();
             expect(results).to.eql(undefined);
+        });
+
+        it('3. run() throw timeout exception if job timeout is exceeded before getting DONE status', async () => {
+            const destinationTableConfig = {
+                datasetName: 'DATASET',
+                tableName: 'TABLE',
+                writeDisposition: 'WRITE_APPEND'
+            };
+            const moreOptions = {
+                shouldQueryResults: false,
+                destinationTableConfig: destinationTableConfig,
+                jobTimeoutSeconds: 1
+            };
+            const opts = Object.assign(_getOptionsComplete(), moreOptions);
+            const bigQueryJob = new BigQueryJob(opts);
+
+            await bigQueryJob.init();
+
+            const queryStr = bigQueryJob.getQuerySQL();
+
+            const jobScope = bigQueryUtil.nockJob(queryStr, null, {statuses: ['RUNNING'], destinationTableConfig: destinationTableConfig, expectQueryResultToBeCalled: false});
+
+            try {
+                await bigQueryJob.run();
+                expect.fail('should not reach here');
+            } catch(err) {
+                expect(err.code).to.eql(Error.JOB_TIMEOUT);
+                jobScope.done();
+            }
         });
     });
 

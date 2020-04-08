@@ -503,45 +503,48 @@ class BigQueryUtil {
      * @return {nock.Scope}
      */
     nockJobMetadata(queryStr, options) {
-
-        const response = {
-            "kind": "bigquery#job",
-            "etag": "oc0uFHxbW45VMWjAhlMQzw==",
-            "id": `${this.projectId}:US.${JOB_ID}`,
-            "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
-            "user_email": "example@example.com",
-            "configuration": {
-                "jobType": "QUERY",
-                "query": {
-                    "query": queryStr,
-                    "destinationTable": options.responseDestination,
-                    "createDisposition": "CREATE_IF_NEEDED",
-                    "writeDisposition": options.destination.writeDisposition != null ? options.destination.writeDisposition : "WRITE_TRUNCATE",
-                    "priority": "INTERACTIVE",
-                    "useLegacySql": false
-                }
-            },
-            "jobReference": {
-                "projectId": this.projectId,
-                "jobId": JOB_ID,
-                "location": "US"
-            },
-            "statistics": {
-                "creationTime": "1584049237824",
-                "startTime": "1584049237943",
-                "endTime": "1584049238136",
-                "totalBytesProcessed": "67742205",
-                "query": {
+        let responseCount = 0;
+        let statuses = options.statuses || ['DONE'];
+        function getResponse() {
+            return {
+                "kind": "bigquery#job",
+                "etag": "oc0uFHxbW45VMWjAhlMQzw==",
+                "id": `${this.projectId}:US.${JOB_ID}`,
+                "selfLink": `https://bigquery.googleapis.com/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}?location=US`,
+                "user_email": "example@example.com",
+                "configuration": {
+                    "jobType": "QUERY",
+                    "query": {
+                        "query": queryStr,
+                        "destinationTable": options.responseDestination,
+                        "createDisposition": "CREATE_IF_NEEDED",
+                        "writeDisposition": options.destination.writeDisposition != null ? options.destination.writeDisposition : "WRITE_TRUNCATE",
+                        "priority": "INTERACTIVE",
+                        "useLegacySql": false
+                    }
+                },
+                "jobReference": {
+                    "projectId": this.projectId,
+                    "jobId": JOB_ID,
+                    "location": "US"
+                },
+                "statistics": {
+                    "creationTime": "1584049237824",
+                    "startTime": "1584049237943",
+                    "endTime": "1584049238136",
                     "totalBytesProcessed": "67742205",
-                    "totalBytesBilled": "67742205",
-                    "cacheHit": false,
-                    "statementType": "SELECT"
+                    "query": {
+                        "totalBytesProcessed": "67742205",
+                        "totalBytesBilled": "67742205",
+                        "cacheHit": false,
+                        "statementType": "SELECT"
+                    }
+                },
+                "status": {
+                    "state": statuses[responseCount++]
                 }
-            },
-            "status": {
-                "state": "DONE"
-            }
-        };
+            };
+        }
 
         return this.getBaseNock()
         .filteringPath(path => {
@@ -550,7 +553,8 @@ class BigQueryUtil {
             return split.join('/') + '/' + JOB_ID;
         })
         .get(`/bigquery/v2/projects/${this.projectId}/jobs/${JOB_ID}`)
-        .reply(200, response);
+        .times(statuses.length)
+        .reply(200, () => getResponse.bind(this)());
     }
 
     /**
@@ -600,6 +604,7 @@ class BigQueryUtil {
             "tableId": "TEMPORAL_TABLE_PLACEHOLDER"
         };
         const jobOptions = {
+            statuses: options.statuses,
             destination: destination,
             responseDestination: destination.destinationTable != null ? destination.destinationTable : defaultResponseDestinationTable
         };

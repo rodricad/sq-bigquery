@@ -2,9 +2,11 @@
 
 const fs = require('fs-extra');
 const _ = require('lodash');
+const Error = require('./lib/constants/error');
 const DummyLogger = require('sq-logger/dummy-logger');
 const Duration = require('sq-toolkit/duration');
-
+const PromiseTool = require('sq-toolkit/promise-native-tool');
+const Exception = require('sq-toolkit/exception')
 const template = require('./lib/utils/template');
 const BigQueryError = require('./error');
 const BigQueryFactory = require('./factory');
@@ -38,6 +40,7 @@ class BigQueryJob {
      * @param {Number=}   [opts.costThresholdInGB = 100]
      * @param {Number=}   [opts.costPerTB = 5]
      * @param {Boolean=true}   opts.shouldQueryResults
+     * @param {Number=30000}   opts.jobTimeoutSeconds
      * @param {TempTableConfig=}   opts.destinationTableConfig
      *
      * @param {BigQuery=} opts.bigQuery
@@ -51,7 +54,7 @@ class BigQueryJob {
 
         this.destinationTableConfig = opts.destinationTableConfig;
         this.shouldQueryResults = opts.shouldQueryResults != null ? opts.shouldQueryResults : true;
-
+        this.jobTimeout = opts.jobTimeoutSeconds != null ? opts.jobTimeoutSeconds * 1000 : 30 * 1000;
         this.bigQuery = opts.bigQuery || null ;
         this.logger = opts.logger || new DummyLogger();
 
@@ -168,6 +171,26 @@ class BigQueryJob {
         }
     }
 
+
+    isJobDone(jobMetadata){
+        return jobMetadata.status.state === 'DONE';
+    }
+
+    async waitForJobDone(job) {
+        const elapsed = Duration.start();
+        let metadata;
+        while(elapsed.end() < this.jobTimeout){
+            [metadata] = await job.getMetadata();
+            if(this.isJobDone(metadata)){
+                return metadata;
+            }
+            this.logger.info('bigquery-job.js Waiting for job to complete... name:%s elapsed:%s', this.name, elapsed.end());
+            await PromiseTool.delay(1000);
+        }
+        this.logger.error('bigquery-job.js Timeout waiting for job to complete. Most probably it will be billed anyway. name:%s elapsed:%s', this.name, elapsed.end());
+        throw new Exception(Error.JOB_TIMEOUT, 'Timeout waiting for job completion');
+    }
+
     /**
      * @return {Promise<Object[]>}
      */
@@ -185,14 +208,15 @@ class BigQueryJob {
             let rows;
 
             let destinationMsg = this._getDestinationLogMsg();
+            let metadata;
             if(this.shouldQueryResults){
                 [rows] = await this._getQueryResults(job);
                 this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms%s', this.name, rows.length, elapsed.end(), destinationMsg);
+                [metadata] = await job.getMetadata();
             } else {
+                metadata = await this.waitForJobDone(job);
                 this.logger.info('bigquery-job.js Query results won\'t be returned due to shouldQueryResults:false. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
             }
-
-            const [metadata] = await job.getMetadata();
             const cacheHit = metadata.statistics.query.cacheHit;
             const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
             this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
