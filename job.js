@@ -2,15 +2,38 @@
 
 const fs = require('fs-extra');
 const _ = require('lodash');
+const Error = require('./lib/constants/error');
 const DummyLogger = require('sq-logger/dummy-logger');
 const Duration = require('sq-toolkit/duration');
-
+const PromiseTool = require('sq-toolkit/promise-native-tool');
+const Exception = require('sq-toolkit/exception');
+const Variables = require('sq-toolkit/variables');
 const template = require('./lib/utils/template');
 const BigQueryError = require('./error');
 const BigQueryFactory = require('./factory');
 
 const COST_THRESHOLD_IN_GB = 100;
 const COST_PER_TB = 5;
+
+const JOB_WAIT_INTERVAL_TEST = 10;
+const JOB_WAIT_INTERVAL = 1000;
+
+/**
+ * Enum string values.
+ * @enum {string}
+ */
+const WriteDisposition = {
+    WRITE_APPEND: 'WRITE_APPEND',
+    WRITE_EMPTY: 'WRITE_EMPTY',
+    WRITE_TRUNCATE: 'WRITE_TRUNCATE'
+};
+
+/**
+ * @typedef {Object} TempTableConfig
+ * @property {String} datasetName
+ * @property {String} tableName
+ * @property {WriteDisposition=} writeDisposition
+ */
 
 class BigQueryJob {
 
@@ -20,6 +43,9 @@ class BigQueryJob {
      * @param {String}    opts.sqlFilename
      * @param {Number=}   [opts.costThresholdInGB = 100]
      * @param {Number=}   [opts.costPerTB = 5]
+     * @param {Boolean=true}   opts.shouldQueryResults
+     * @param {Number=30000}   opts.timeoutInSeconds
+     * @param {TempTableConfig=}   opts.destinationTableConfig
      *
      * @param {BigQuery=} opts.bigQuery
      * @param {WinstonLogger|DummyLogger=} opts.logger
@@ -30,6 +56,9 @@ class BigQueryJob {
         this.costThresholdInGB = opts.costThresholdInGB != null ? opts.costThresholdInGB : COST_THRESHOLD_IN_GB;
         this.costPerTB = opts.costPerTB != null ? opts.costPerTB : COST_PER_TB;
 
+        this.destinationTableConfig = opts.destinationTableConfig;
+        this.shouldQueryResults = opts.shouldQueryResults != null ? opts.shouldQueryResults : true;
+        this.timeoutInMs = opts.timeoutInSeconds != null ? opts.timeoutInSeconds * 1000 : 30 * 1000;
         this.bigQuery = opts.bigQuery || null ;
         this.logger = opts.logger || new DummyLogger();
 
@@ -53,10 +82,24 @@ class BigQueryJob {
             return this;
         }
         this.bigQuery = this.bigQuery || BigQueryFactory.getInstance();
+        if(this.destinationTableConfig != null){
+            let destinationDataset = this.bigQuery.dataset(this.destinationTableConfig.datasetName);
+            this.destinationTable = destinationDataset.table(this.destinationTableConfig.tableName);
+        }
         this.sqlStr = await fs.readFile(this.sqlFilename, 'utf8');
         this.sqlTemplate = template(this.sqlStr);
         this._initialized = true;
         return this;
+    }
+
+    getDestinationTableAndWriteDispostion(){
+        let ret = {};
+        ret.destination = this.destinationTable || null;
+        let writeDisposition = this.destinationTableConfig && this.destinationTableConfig.writeDisposition;
+        if(writeDisposition != null){
+            ret.writeDisposition = writeDisposition;
+        }
+        return ret;
     }
 
     /**
@@ -97,11 +140,10 @@ class BigQueryJob {
             dryRun: false,
             useLegacySql: false,
             query: this.getQuerySQL(),
-
+            ...this.getDestinationTableAndWriteDispostion(),
             ...opts,
 
             // This params CAN'T be overridden
-            destination: null,  // With destination = null, BigQuery will generate a temporal table that lives for 24 hs
             location: null,     // By default, it will take the default service account location
             jobId: null,        // BigQuery will generate the jobId randomly
             jobPrefix: null
@@ -133,6 +175,30 @@ class BigQueryJob {
         }
     }
 
+
+    isJobDone(jobMetadata){
+        return jobMetadata.status.state === 'DONE';
+    }
+
+    getJobWaitInterval() {
+        return Variables.isTestingMode() ? JOB_WAIT_INTERVAL_TEST : JOB_WAIT_INTERVAL;
+    }
+
+    async waitForJobDone(job) {
+        const elapsed = Duration.start();
+        let metadata;
+        while(elapsed.end() < this.timeoutInMs){
+            [metadata] = await job.getMetadata();
+            if(this.isJobDone(metadata)){
+                return metadata;
+            }
+            this.logger.info('bigquery-job.js Waiting for job to complete... name:%s elapsed:%s', this.name, elapsed.end());
+            await PromiseTool.delay(this.getJobWaitInterval());
+        }
+        this.logger.error('bigquery-job.js Timeout waiting for job to complete. Most probably it will be billed anyway. name:%s elapsed:%s', this.name, elapsed.end());
+        throw new Exception(Error.JOB_TIMEOUT, 'Timeout exceeded (%s ms) waiting for job completion', this.timeoutInMs);
+    }
+
     /**
      * @return {Promise<Object[]>}
      */
@@ -147,10 +213,18 @@ class BigQueryJob {
             const [job] = await this.bigQuery.createQueryJob(jobOpts);
             this.logger.info('bigquery-job.js Executed job. Getting query results. name:%s', this.name);
 
-            const [rows] = await this._getQueryResults(job);
-            this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms', this.name, rows.length, elapsed.end());
+            let rows;
 
-            const [metadata] = await job.getMetadata();
+            let destinationMsg = this._getDestinationLogMsg();
+            let metadata;
+            if(this.shouldQueryResults){
+                [rows] = await this._getQueryResults(job);
+                this.logger.info('bigquery-job.js Got query results. name:%s totalRows:%s elapsed:%s ms%s', this.name, rows.length, elapsed.end(), destinationMsg);
+                [metadata] = await job.getMetadata();
+            } else {
+                this.logger.info('bigquery-job.js Query results won\'t be returned due to shouldQueryResults:false. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
+                metadata = await this.waitForJobDone(job);
+            }
             const cacheHit = metadata.statistics.query.cacheHit;
             const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
             this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
@@ -160,6 +234,19 @@ class BigQueryJob {
         catch(err) {
             BigQueryError.parseErrorAndThrow(err);
         }
+    }
+
+    _getDestinationLogMsg() {
+        let destinationInfo = this.getDestinationTableAndWriteDispostion();
+        let destinationMsg = '';
+        let destinationTable = destinationInfo.destination;
+        if (destinationInfo.destination != null) {
+            destinationMsg = ` destination:${destinationTable.parent.id}.${destinationTable.id}`;
+        }
+        if (destinationInfo.writeDisposition) {
+            destinationMsg += ` writeDisposition:${destinationInfo.writeDisposition}`;
+        }
+        return destinationMsg;
     }
 
     /**
@@ -194,5 +281,7 @@ function _getCost(bytes, costPerTB) {
         price: price.toFixed(4)
     };
 }
+
+BigQueryJob.WriteDisposition = WriteDisposition;
 
 module.exports = BigQueryJob;
