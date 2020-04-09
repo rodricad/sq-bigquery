@@ -332,7 +332,7 @@ describe('BigQueryJob Test', function () {
             const moreOptions = {
                 shouldQueryResults: false,
                 destinationTableConfig: destinationTableConfig,
-                jobTimeoutSeconds: 1
+                jobTimeoutSeconds: 0.001
             };
             const opts = Object.assign(_getOptionsComplete(), moreOptions);
             const bigQueryJob = new BigQueryJob(opts);

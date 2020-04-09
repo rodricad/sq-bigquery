@@ -14,6 +14,9 @@ const BigQueryFactory = require('./factory');
 const COST_THRESHOLD_IN_GB = 100;
 const COST_PER_TB = 5;
 
+const JOB_WAIT_INTERVAL_TEST = 10;
+const JOB_WAIT_INTERVAL = 1000;
+
 /**
  * Enum string values.
  * @enum {string}
@@ -176,6 +179,10 @@ class BigQueryJob {
         return jobMetadata.status.state === 'DONE';
     }
 
+    getJobWaitInterval() {
+        return 'testing' === process.env.NODE_ENV ? JOB_WAIT_INTERVAL_TEST : JOB_WAIT_INTERVAL;
+    }
+
     async waitForJobDone(job) {
         const elapsed = Duration.start();
         let metadata;
@@ -185,7 +192,7 @@ class BigQueryJob {
                 return metadata;
             }
             this.logger.info('bigquery-job.js Waiting for job to complete... name:%s elapsed:%s', this.name, elapsed.end());
-            await PromiseTool.delay(1000);
+            await PromiseTool.delay(this.getJobWaitInterval());
         }
         this.logger.error('bigquery-job.js Timeout waiting for job to complete. Most probably it will be billed anyway. name:%s elapsed:%s', this.name, elapsed.end());
         throw new Exception(Error.JOB_TIMEOUT, 'Timeout waiting for job completion');
