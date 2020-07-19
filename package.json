@@ -22,7 +22,7 @@
     "@google-cloud/bigquery": "^4.3.0",
     "bluebird": "^3.7.1",
     "fs-extra": "^8.1.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "sq-logger": "git+https://github.com/rodricad/sq-logger.git",
     "sq-toolkit": "https://github.com/rodricad/sq-toolkit.git",
     "uuid": "^3.3.3"
