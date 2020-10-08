@@ -7,6 +7,8 @@ describe('BigQueryTable Test', function () {
     let _       = require('lodash');
     let chai    = require('chai');
     let expect  = chai.expect;
+    let sinon   = require('sinon');
+    const Error = require('../lib/constants/error');
 
     let PROJECT_ID   = 'test-project';
     let DATASET_NAME = 'DatasetNew';
@@ -100,35 +102,44 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: false });
 
-            let item = {
-                title: 'value'
-            };
+            bigQueryUtil.patchInsertId();
+
+            let item = _getItemSet(1)[0];
 
             bigQueryUtil.patchInsertId();
 
             let scope = bigQueryUtil.nockInsert(table.name, item);
+            let insertSpy = sinon.spy(table.table, 'insert');
 
             return table.insert(item)
             .then(response => {
                 scope.done();
+                expect(insertSpy.calledOnce).to.eql(true);
+                expect(insertSpy.firstCall.args).to.eql([
+                    [{
+                        "insertId": "00000000-0000-0000-0000-000000000000",
+                        "json": {
+                            "value": 0
+                        }
+                    }],
+                    {
+                        "raw": true
+                    }
+                ]);
                 expect(response.kind).to.equals('bigquery#tableDataInsertAllResponse');
             })
             .finally(() => {
+                insertSpy.restore();
                 bigQueryUtil.restoreInsertId();
             });
         });
 
-        it('2. Insert a multiple objects with buffer enabled and maxItems = 5. Expect all items to be inserted in bulk and no promise returned', function () {
+        it('2. Insert multiple objects with buffer enabled and maxItems = 5. Expect all items to be inserted in bulk and no promise returned', function () {
 
             let notify = NotifyUtil.getNotify(BufferQueue);
 
-            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5});
-            let items = [];
-
-            for (let i = 0; i < 5; i++) {
-                let item = { title: 'value ' + i };
-                items.push(item);
-            }
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5 });
+            let items = _getItemSet(5);
 
             bigQueryUtil.patchInsertId();
 
@@ -152,18 +163,15 @@ describe('BigQueryTable Test', function () {
 
             let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2});
 
-            let item1 = { value: 1 };
-            let item2 = { value: 'string' };
+            let items = _getItemSet(2);
 
             bigQueryUtil.patchInsertId();
 
-            let scope = bigQueryUtil.nockInsertError(table.name, [item1, item2]);
+            let scope = bigQueryUtil.nockInsertError(table.name, items);
 
-            // Valid item insert
-            table.insert(item1);
-
-            // Invalid item insert
-            table.insert(item2);
+            items.forEach(item =>{
+                table.insert(item);
+            });
 
             return notify.deferred
             .then(() => {
@@ -171,13 +179,116 @@ describe('BigQueryTable Test', function () {
 
                 let logger = table.logger;
 
-                expect(logger.notifier.values.key).to.equals('TableExists | BufferQueue Error');
+                expect(logger.notifier.values.key).to.equals('TableExists | BqBufferQueue Error');
                 expect(logger.notifier.values.start).to.equals(10);
                 expect(logger.notifier.values.each).to.equals(100);
-                expect(logger.notifier.values.msg).to.equals('buffer-queue.js:: Error at %s Buffer. Error: ');
+                expect(logger.notifier.values.msg).to.equals('bq-buffer-queue.js:: Error at %s Buffer. Error: ');
             })
             .finally(() => {
                 NotifyUtil.restore(notify);
+                bigQueryUtil.restoreInsertId();
+            });
+        });
+
+        it('4. Insert objects with buffer enabled and buffer item promises enabled. maxItems = 5, maxTime = 100ms. Expect promises returned', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: true, bufferMaxTime: 100});
+
+            let items = _getItemSet(2);
+
+            bigQueryUtil.patchInsertId();
+
+            let scope = bigQueryUtil.nockInsert(table.name, items);
+
+            let promises = items.map(item =>{
+                return table.insert(item);
+            });
+
+            return Promise.all(promises)
+            .then(() => {
+                scope.done();
+            })
+            .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
+
+        it('5. Try to insert multiple objects at once with buffer enabled and buffer item promises enabled. Expect error thrown', async () => {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+
+            let items = _getItemSet(2);
+
+            try {
+                await table.insert(items);
+            } catch (err) {
+                expect(err.code).to.eql(Error.ERROR_ADD_MANY_NOT_SUPPORTED);
+            }
+        });
+
+        it('6. Test inserting passing insertId. Expect promises returned', async () => {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 2, bufferItemPromises: true});
+
+            let item1 = BigQueryTable.getRawRow({ value: 1, _insertId: '123456789' });
+            let item2 = BigQueryTable.getRawRow({ value: 'string', _insertId: '987654321' });
+
+            let scope = bigQueryUtil.nockInsert(table.name, [item1, item2]);
+
+            let promise1 = table.insert(item1);
+            let promise2 = table.insert(item2);
+
+            return Promise.all([promise1, promise2])
+            .then(() => {
+                scope.done();
+            });
+        });
+
+        it('7. Ensure flush() is called when buffer was over filled and insert request returns a delayed response', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: false, bufferMaxTime: 100});
+
+            let itemSet1 = _getItemSet(5);
+            let itemSet2 = _getItemSet(3);
+
+            bigQueryUtil.patchInsertId();
+
+            let scope1 = bigQueryUtil.nockInsert(table.name, itemSet1, 300);
+            let scope2 = bigQueryUtil.nockInsert(table.name, itemSet2);
+
+            table.insert(itemSet1.concat(itemSet2));
+
+            return Promise.delay(350)
+            .then(() => {
+                scope1.done();
+                scope2.done();
+            })
+            .finally(() => {
+                bigQueryUtil.restoreInsertId();
+            });
+        });
+
+        it('8. Ensure flush() is not called unnecessarily', function () {
+
+            let table = _getTable({ bufferEnabled: true, bufferMaxItems: 5, bufferItemPromises: false, bufferMaxTime: 100});
+
+            let itemSet1 = _getItemSet(3);
+
+            let flushSpy = sinon.spy(table.bufferQueue, 'flush');
+
+            bigQueryUtil.patchInsertId();
+
+            let scope1 = bigQueryUtil.nockInsert(table.name, itemSet1);
+
+            table.insert(itemSet1);
+
+            return Promise.delay(350)
+            .then(() => {
+                expect(flushSpy.callCount).to.eql(2); // Once for actual flush, once to clear interval
+                scope1.done();
+            })
+            .finally(() => {
+                flushSpy.restore();
                 bigQueryUtil.restoreInsertId();
             });
         });
@@ -198,6 +309,22 @@ describe('BigQueryTable Test', function () {
     }
 
     /**
+     * Generates array of test items
+     * @param size amount of test items to return in array
+     * @return {Array}
+     * @private
+     */
+    function _getItemSet(size) {
+        let array = [];
+        for(let i=0; i<size; i++) {
+            array.push(i);
+        }
+        return array.map(i => {
+            return BigQueryTable.getRawRow({ value: i });
+        });
+    }
+
+    /**
      * @param {Object=} opts
      * @return {Object}
      * @private
@@ -209,7 +336,8 @@ describe('BigQueryTable Test', function () {
             logger: new DummyLogger(),
             bufferEnabled: false,
             bufferMaxItems: null,
-            bufferMaxTime: null
+            bufferMaxTime: null,
+            bufferItemPromises: false
         };
         if (opts != null) {
             _.assignIn(options, opts);
