@@ -250,12 +250,55 @@ class BigQueryJob {
     }
 
     /**
+     * @returns {Promise<stream>}
+     */
+    async stream() {
+        let elapsed = Duration.start();
+        await this.validate();
+
+        this.logger.info('bigquery-job.js Running job. name:%s', this.name);
+        const jobOpts = this.getQueryOptions({ dryRun: false });
+
+        try {
+            const [job] = await this.bigQuery.createQueryJob(jobOpts);
+            this.logger.info('bigquery-job.js Executed job. Getting query results stream. name:%s', this.name);
+
+            let stream;
+
+            let destinationMsg = this._getDestinationLogMsg();
+            let metadata;
+
+            stream = await this._getQueryResultsStream(job);
+            this.logger.info('bigquery-job.js Got query results stream. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
+            [metadata] = await job.getMetadata();
+
+            const cacheHit = metadata.statistics.query.cacheHit;
+            const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
+            this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', this.name, this.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+
+            return stream;
+        }
+        catch(err) {
+            BigQueryError.parseErrorAndThrow(err);
+        }
+    }
+
+    /**
      * @param job
      * @return {Promise<QueryRowsResponse> | void}
      * @private
      */
     _getQueryResults(job) {
         return job.getQueryResults({ autoPaginate: true });
+    }
+
+    /**
+     * @param job
+     * @return {stream}
+     * @private
+     */
+    _getQueryResultsStream(job) {
+        return job.getQueryResultsStream();
     }
 }
 
