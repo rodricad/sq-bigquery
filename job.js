@@ -250,7 +250,7 @@ class BigQueryJob {
     }
 
     /**
-     * @returns {Promise<stream>}
+     * @returns {Promise<stream.Readable>}
      */
     async stream() {
         let elapsed = Duration.start();
@@ -294,7 +294,7 @@ class BigQueryJob {
 
     /**
      * @param job
-     * @return {stream}
+     * @returns {stream.Readable}
      * @private
      */
     _getQueryResultsStream(job) {
