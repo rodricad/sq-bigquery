@@ -4,6 +4,7 @@ const nock = require('nock');
 const sinon = require('sinon');
 const _ = require('lodash');
 const { expect } = require('chai');
+const Readable = require('stream').Readable;
 
 const BigQueryTable = require('./table');
 const BigQueryJob = require('./job');
@@ -564,6 +565,11 @@ class BigQueryUtil {
         return sinon.stub(BigQueryJob.prototype, '_getQueryResults').resolves([rows]);
     }
 
+    stubJobQueryResultsStream() {
+        let stream = new Readable({objectMode: true});
+        return sinon.stub(BigQueryJob.prototype, '_getQueryResultsStream').resolves(stream);
+    }
+
     /**
      * @typedef {Object} NockJobResponse
      * @property {nock.Scope} jobValidationScope
@@ -579,7 +585,7 @@ class BigQueryUtil {
      * @param {Object} options
      * @return {NockJobResponse}
      */
-    nockJob(queryStr, rows, options = {expectQueryResultToBeCalled: true, destinationTableConfig: null}) {
+    nockJob(queryStr, rows, options = {expectQueryResultToBeCalled: true, destinationTableConfig: null, expectQueryResultsStreamToBeCalled: false}) {
         let destination;
         if(options.destinationTableConfig != null){
             destination = {
@@ -588,11 +594,11 @@ class BigQueryUtil {
                     tableId: options.destinationTableConfig.tableName,
                     projectId: this.projectId
                 }
-            }
+            };
         } else {
             destination = {
                 destination: null
-            }
+            };
         }
         let writeDisposition = options.destinationTableConfig && options.destinationTableConfig.writeDisposition || null;
         if(writeDisposition){
@@ -612,14 +618,16 @@ class BigQueryUtil {
         const jobCreationScope = this.nockJobCreation(queryStr, jobOptions);
         const jobMetadataScope = this.nockJobMetadata(queryStr, jobOptions);
         const jobQueryResultsStub = this.stubJobQueryResults(rows);
+        const jobQueryResultsStreamStub = this.stubJobQueryResultsStream();
 
         return {
             jobValidationScope,
             jobCreationScope,
             jobMetadataScope,
             jobQueryResultsStub,
-            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, options.expectQueryResultToBeCalled)
-        }
+            jobQueryResultsStreamStub,
+            done: this.doneJob.bind(this, jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, jobQueryResultsStreamStub, options.expectQueryResultToBeCalled, options.expectQueryResultsStreamToBeCalled)
+        };
     }
 
     /**
@@ -628,7 +636,7 @@ class BigQueryUtil {
      * @param {nock.Scope} jobMetadataScope
      * @param jobQueryResultsStub
      */
-    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, expectQueryResultToBeCalled) {
+    doneJob(jobValidationScope, jobCreationScope, jobMetadataScope, jobQueryResultsStub, jobQueryResultsStreamStub, expectQueryResultToBeCalled, expectQueryResultsStreamToBeCalled) {
         jobValidationScope.done();
         jobCreationScope.done();
         jobMetadataScope.done();
@@ -640,6 +648,15 @@ class BigQueryUtil {
             jobQueryResultsStub.restore();
         } else {
             expect(jobQueryResultsStub.called).to.equals(false, 'getQueryResults should not be called');
+        }
+
+        if(expectQueryResultsStreamToBeCalled){
+            expect(jobQueryResultsStreamStub.calledOnce).to.equals(true, 'getQueryResults should be called just once');
+            const jobId = _.get(jobQueryResultsStreamStub.args, '[0][0].metadata.jobReference.jobId', null);
+            expect(jobId).to.equals(JOB_ID, 'Job should match test jobId at getQueryResults');
+            jobQueryResultsStreamStub.restore();
+        } else {
+            expect(jobQueryResultsStreamStub.called).to.equals(false, 'getQueryResults should not be called');
         }
     }
 

@@ -7,6 +7,7 @@ describe('BigQueryJob Test', function () {
     const _ = require('lodash');
     const chai = require('chai');
     const { expect, assert } = chai;
+    const Readable = require('stream').Readable;
 
     const DummyLogger = require('sq-logger/dummy-logger');
     const { BigQuery } = require('@google-cloud/bigquery');
@@ -350,6 +351,54 @@ describe('BigQueryJob Test', function () {
                 expect(err.code).to.eql(Error.JOB_TIMEOUT);
                 jobScope.done();
             }
+        });
+    });
+
+    describe('5. stream()', () => {
+
+        let authScope = null;
+        let bigQueryUtil = null;
+
+        before(() => {
+            BigQueryFactory.clearInstance();
+            const bigQueryOpts = {
+                projectId: PROJECT_ID,
+                keyFilename: path.resolve(__dirname, '../data/bigquery-credentials-test.json')
+            };
+            BigQueryFactory.createInstance(bigQueryOpts);
+            bigQueryUtil = new BigQueryUtil(PROJECT_ID, DATASET_NAME);
+            bigQueryUtil.cleanAll();
+
+            authScope = bigQueryUtil.nockOAuth();
+        });
+
+        beforeEach(() => {
+            sinon.restore();
+        });
+
+        after(() => {
+            authScope.done();
+
+            sinon.restore();
+            bigQueryUtil.cleanAll();
+        });
+
+        it('1. Create BigQueryJob and make stream(). Expect to validate first and the return rows', async () => {
+            const opts = _getOptionsComplete();
+            const bigQueryJob = new BigQueryJob(opts);
+
+            await bigQueryJob.init();
+
+            const queryStr = bigQueryJob.getQuerySQL();
+            const rows = _getResults();
+
+            const jobScope = bigQueryUtil.nockJob(queryStr, rows, {expectQueryResultsStreamToBeCalled: true, destinationTableConfig: null, expectQueryResultToBeCalled: false});
+
+            const stream = await bigQueryJob.stream();
+
+            jobScope.done();
+
+            expect(stream).to.instanceOf(Readable);
         });
     });
 
