@@ -215,7 +215,7 @@ class BigQueryJob {
 
             let rows;
 
-            let destinationMsg = this._getDestinationLogMsg();
+            const destinationMsg = this._getDestinationLogMsg();
             let metadata;
             if(this.shouldQueryResults){
                 [rows] = await this._getQueryResults(job);
@@ -263,14 +263,11 @@ class BigQueryJob {
             const [job] = await this.bigQuery.createQueryJob(jobOpts);
             this.logger.info('bigquery-job.js Executed job. Getting query results stream. name:%s', this.name);
 
-            let stream;
+            const destinationMsg = this._getDestinationLogMsg();
 
-            let destinationMsg = this._getDestinationLogMsg();
-            let metadata;
-
-            stream = await this._getQueryResultsStream(job);
+            const stream = await this._getQueryResultsStream(job);
             this.logger.info('bigquery-job.js Got query results stream. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
-            [metadata] = await job.getMetadata();
+            const [metadata] = await job.getMetadata();
 
             const cacheHit = metadata.statistics.query.cacheHit;
             const cost = _getCost(metadata.statistics.query.totalBytesBilled, this.costPerTB);
@@ -294,7 +291,7 @@ class BigQueryJob {
 
     /**
      * @param job
-     * @returns {stream.Readable}
+     * @returns {Promise<stream.Readable>}
      * @private
      */
     _getQueryResultsStream(job) {
