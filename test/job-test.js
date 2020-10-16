@@ -395,6 +395,7 @@ describe('BigQueryJob Test', function () {
             const jobScope = bigQueryUtil.nockJob(queryStr, rows, {expectQueryResultsStreamToBeCalled: true, destinationTableConfig: null, expectQueryResultToBeCalled: false});
 
             const stream = await bigQueryJob.stream();
+            await stream._final(() => {}); // simulate stream finished
 
             jobScope.done();
 
