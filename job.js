@@ -269,12 +269,18 @@ class BigQueryJob {
             this.logger.info('bigquery-job.js Got query results stream. name:%s elapsed:%s ms%s', this.name, elapsed.end(), destinationMsg);
 
             const self = this;
+            // https://nodejs.org/api/stream.html#stream_writable_final_callback
             stream._final = async function(callback) {
-                let [metadata] = await job.getMetadata();
-                const cacheHit = metadata.statistics.query.cacheHit;
-                const cost = _getCost(metadata.statistics.query.totalBytesBilled, self.costPerTB);
-                this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', self.name, self.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
-                callback();
+                try{
+                    let [metadata] = await job.getMetadata();
+                    const cacheHit = metadata.statistics.query.cacheHit;
+                    const cost = _getCost(metadata.statistics.query.totalBytesBilled, self.costPerTB);
+                    this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', self.name, self.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+                    callback();
+                } catch (e) {
+                    this.logger.error('bigquery-job.js Error fetching job metadata. Error:', Exception.getMessage(e));
+                    callback();
+                }
             };
             return stream;
         }
