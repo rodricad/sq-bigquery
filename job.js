@@ -275,11 +275,11 @@ class BigQueryJob {
                     let [metadata] = await job.getMetadata();
                     const cacheHit = metadata.statistics.query.cacheHit;
                     const cost = _getCost(metadata.statistics.query.totalBytesBilled, self.costPerTB);
-                    this.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', self.name, self.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
+                    self.logger.info('bigquery-job.js Got query metadata. name:%s costThresholdInGB:%s cacheHit:%s. Billed cost: $%s | %s TB | %s GB | %s MB | %s KB | %s bytes', self.name, self.costThresholdInGB, cacheHit, cost.price, cost.tb, cost.gb, cost.mb, cost.kb, cost.bytes);
                     callback();
                 } catch (e) {
-                    this.logger.error('bigquery-job.js Error fetching job metadata. Error:', Exception.getMessage(e));
-                    callback();
+                    self.logger.error('bigquery-job.js Error fetching job metadata. Error:', Exception.getMessage(e));
+                    callback(e);
                 }
             };
             return stream;
